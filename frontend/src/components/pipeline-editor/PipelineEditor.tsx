@@ -83,6 +83,20 @@ export default function PipelineEditor({
   const { theme } = useTheme();
   const reactFlowInstance = useRef<ReactFlowInstance | null>(null);
 
+  // keep selectedNode in sync when nodes are updated
+  useEffect(() => {
+    if (selectedNode) {
+      const updatedNode = nodes.find((n) => n.id === selectedNode.id);
+      if (updatedNode) {
+        // check if config actually changed (deep comparison)
+        const configChanged = JSON.stringify(updatedNode.data.config) !== JSON.stringify(selectedNode.data?.config);
+        if (updatedNode !== selectedNode || configChanged) {
+          setSelectedNode(updatedNode);
+        }
+      }
+    }
+  }, [nodes]);
+
   // minimap adjusted for light/dark mode using primer theme colors
   function MinimapWithTheme() {
     const { theme } = useTheme();
@@ -418,8 +432,7 @@ export default function PipelineEditor({
           return node;
         })
       );
-      // close the panel after updating
-      setSelectedNode(null);
+      // panel closing is now handled by BlockConfigPanel after validation
     },
     [setNodes]
   );

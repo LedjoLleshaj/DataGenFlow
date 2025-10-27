@@ -32,19 +32,52 @@ export default function BlockConfigPanel({
   const [formData, setFormData] = useState<Record<string, any>>(config || {});
   const { resolvedColorScheme } = useTheme();
   const [wordWrap, setWordWrap] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
 
   // sync formData when node config changes
   useEffect(() => {
     setFormData(config || {});
+    setErrors({});
   }, [node.id, config]);
 
   const handleChange = useCallback((key: string, value: any) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
+    // clear error for this field when user starts editing
+    setErrors((prev) => {
+      const newErrors = { ...prev };
+      delete newErrors[key];
+      return newErrors;
+    });
   }, []);
 
   const handleSave = useCallback(() => {
-    onUpdate(node.id, formData);
-  }, [node.id, formData, onUpdate]);
+    // validate and parse JSON strings for array/object fields before saving
+    const processedData = { ...formData };
+    const schema = block.config_schema?.properties || {};
+    const validationErrors: Record<string, string> = {};
+
+    Object.entries(schema).forEach(([key, fieldSchema]: [string, any]) => {
+      const value = processedData[key];
+      if ((fieldSchema.type === "array" || fieldSchema.type === "object") && typeof value === "string") {
+        try {
+          processedData[key] = JSON.parse(value);
+        } catch (e) {
+          validationErrors[key] = `Invalid JSON: ${e instanceof Error ? e.message : 'parse error'}`;
+        }
+      }
+    });
+
+    // if there are validation errors, show them and don't close panel
+    if (Object.keys(validationErrors).length > 0) {
+      setErrors(validationErrors);
+      return;
+    }
+
+    // validation passed, clear errors, update config and close panel
+    setErrors({});
+    onUpdate(node.id, processedData);
+    onClose();
+  }, [node.id, formData, onUpdate, onClose, block.config_schema]);
 
   const renderField = (key: string, schema: any) => {
     const value = formData[key] ?? schema.default ?? "";
@@ -72,29 +105,33 @@ export default function BlockConfigPanel({
     }
 
     // field reference dropdown (references to accumulated_state fields)
-    // use TextInput with datalist to allow both selection and custom typing
     if (schema.isFieldReference) {
-      const datalistId = `datalist-${key}`;
-      return (
-        <Box>
+      if (availableFields.length > 0) {
+        // use Select dropdown when fields are available
+        return (
+          <Select
+            value={value}
+            onChange={(e) => handleChange(key, e.target.value)}
+            sx={{ width: "100%" }}
+          >
+            {availableFields.map((field) => (
+              <Select.Option key={field} value={field}>
+                {field}
+              </Select.Option>
+            ))}
+          </Select>
+        );
+      } else {
+        // fallback to text input when no fields available
+        return (
           <TextInput
             value={value}
             onChange={(e) => handleChange(key, e.target.value)}
-            list={datalistId}
-            placeholder={
-              availableFields.length > 0 ? "Select or type field name" : "Type field name"
-            }
+            placeholder="Type field name"
             sx={{ width: "100%" }}
           />
-          {availableFields.length > 0 && (
-            <datalist id={datalistId}>
-              {availableFields.map((field) => (
-                <option key={field} value={field} />
-              ))}
-            </datalist>
-          )}
-        </Box>
-      );
+        );
+      }
     }
 
     // number field
@@ -181,7 +218,8 @@ export default function BlockConfigPanel({
             defaultLanguage="json"
             value={jsonValue}
             onChange={(newValue) => {
-              handleChange(key, newValue);
+              // keep as string during editing, will be parsed on save
+              handleChange(key, newValue || "");
             }}
             theme={resolvedColorScheme === "dark" ? "vs-dark" : "light"}
             options={{
@@ -381,6 +419,19 @@ export default function BlockConfigPanel({
                   </Text>
                 )}
                 {renderField(key, schema)}
+                {errors[key] && (
+                  <Text
+                    sx={{
+                      fontSize: 0,
+                      color: "danger.fg",
+                      display: "block",
+                      mt: 1,
+                      fontWeight: "bold",
+                    }}
+                  >
+                    {errors[key]}
+                  </Text>
+                )}
               </Box>
             );
           })}
