@@ -89,13 +89,14 @@ export default function PipelineEditor({
       const updatedNode = nodes.find((n) => n.id === selectedNode.id);
       if (updatedNode) {
         // check if config actually changed (deep comparison)
-        const configChanged = JSON.stringify(updatedNode.data.config) !== JSON.stringify(selectedNode.data?.config);
+        const configChanged =
+          JSON.stringify(updatedNode.data.config) !== JSON.stringify(selectedNode.data?.config);
         if (updatedNode !== selectedNode || configChanged) {
           setSelectedNode(updatedNode);
         }
       }
     }
-  }, [nodes]);
+  }, [nodes, selectedNode]);
 
   // minimap adjusted for light/dark mode using primer theme colors
   function MinimapWithTheme() {
