@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   Box,
   Heading,
@@ -30,7 +30,6 @@ import type { RecordData, Pipeline, Job } from "../types";
 export default function Review() {
   const [records, setRecords] = useState<RecordData[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isEditing, setIsEditing] = useState(false);
   const [filterStatus, setFilterStatus] = useState<"pending" | "accepted" | "rejected">("pending");
   const [stats, setStats] = useState({ pending: 0, accepted: 0, rejected: 0 });
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -49,6 +48,7 @@ export default function Review() {
   const [selectedRecordForDetails, setSelectedRecordForDetails] = useState<RecordData | null>(null);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [_isExpanded, setIsExpanded] = useState(false);
+  const startEditingRef = useRef<(() => void) | null>(null);
 
   const currentRecord = records[currentIndex] || null;
 
@@ -101,7 +101,7 @@ export default function Review() {
       return;
     }
 
-    let url = `/api/records?status=${filterStatus}&limit=100`;
+    let url = `/api/records?status=${filterStatus}&limit=100&pipeline_id=${selectedPipeline}`;
     if (selectedJob) {
       url += `&job_id=${selectedJob}`;
     }
@@ -117,12 +117,13 @@ export default function Review() {
       return;
     }
 
-    // fetch records to get accurate counts, filtered by job if selected
+    // fetch records to get accurate counts, filtered by pipeline and job if selected
+    const pipelineParam = `&pipeline_id=${selectedPipeline}`;
     const jobParam = selectedJob ? `&job_id=${selectedJob}` : "";
     const [pending, accepted, rejected] = await Promise.all([
-      fetch(`/api/records?status=pending${jobParam}`).then((r) => r.json()),
-      fetch(`/api/records?status=accepted${jobParam}`).then((r) => r.json()),
-      fetch(`/api/records?status=rejected${jobParam}`).then((r) => r.json()),
+      fetch(`/api/records?status=pending${pipelineParam}${jobParam}`).then((r) => r.json()),
+      fetch(`/api/records?status=accepted${pipelineParam}${jobParam}`).then((r) => r.json()),
+      fetch(`/api/records?status=rejected${pipelineParam}${jobParam}`).then((r) => r.json()),
     ]);
     setStats({
       pending: pending.length,
@@ -145,12 +146,6 @@ export default function Review() {
     },
     [loadRecords, loadStats]
   );
-
-  const startEditing = useCallback(() => {
-    if (!currentRecord) return;
-    setIsEditing(true);
-    setIsExpanded(true);
-  }, [currentRecord]);
 
   useEffect(() => {
     loadPipelines();
@@ -175,7 +170,6 @@ export default function Review() {
   // reset index when changing filter
   useEffect(() => {
     setCurrentIndex(0);
-    setIsEditing(false);
     setIsExpanded(false);
   }, [filterStatus]);
 
@@ -196,7 +190,13 @@ export default function Review() {
   // keyboard shortcuts
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
-      if (isEditing) return; // disable shortcuts while editing
+      // disable shortcuts when typing in input/textarea
+      if (
+        document.activeElement?.tagName === "INPUT" ||
+        document.activeElement?.tagName === "TEXTAREA"
+      ) {
+        return;
+      }
 
       if (e.key === "a" && currentRecord) {
         updateStatus(currentRecord.id, "accepted");
@@ -204,8 +204,8 @@ export default function Review() {
         updateStatus(currentRecord.id, "rejected");
       } else if (e.key === "u" && currentRecord) {
         updateStatus(currentRecord.id, "pending");
-      } else if (e.key === "e" && currentRecord) {
-        startEditing();
+      } else if (e.key === "e" && currentRecord && viewMode === "single") {
+        startEditingRef.current?.();
       } else if (e.key === "n" && currentIndex < records.length - 1) {
         setCurrentIndex(currentIndex + 1);
         setIsExpanded(false);
@@ -217,7 +217,7 @@ export default function Review() {
 
     window.addEventListener("keydown", handleKeyPress);
     return () => window.removeEventListener("keydown", handleKeyPress);
-  }, [currentRecord, currentIndex, records.length, isEditing, updateStatus, startEditing]);
+  }, [currentRecord, currentIndex, records.length, updateStatus, viewMode]);
 
   const goToNext = () => {
     if (currentIndex < records.length - 1) {
@@ -585,8 +585,11 @@ export default function Review() {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(updates),
             });
-            loadRecords();
-            loadStats();
+            await loadRecords();
+            await loadStats();
+          }}
+          onRegisterStartEditing={(fn) => {
+            startEditingRef.current = fn;
           }}
           isPending={filterStatus === "pending"}
         />
