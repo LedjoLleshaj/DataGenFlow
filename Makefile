@@ -1,4 +1,4 @@
-.PHONY: check-deps install dev dev-ui dev-backend run-dev build-ui run mock-llm clean lint format lint-frontend format-frontend format-all lint-all typecheck typecheck-frontend typecheck-all test test-integration pre-merge setup
+.PHONY: check-deps install dev dev-ui dev-backend run-dev build-ui run mock-llm clean lint format lint-frontend format-frontend lint-website format-website format-all lint-all typecheck typecheck-frontend typecheck-website typecheck-all test test-integration build-website pre-merge setup
 
 # check if required dependencies are installed
 check-deps:
@@ -59,7 +59,7 @@ clean:
 	rm -rf .mypy_cache .ruff_cache
 	rm -rf *.pyc */*.pyc */*/*.pyc
 	rm -rf data/*.db
-	rm -rf frontend/build frontend/.svelte-kit frontend/node_modules
+	rm -rf frontend/build frontend/node_modules
 
 lint:
 	uv run ruff check .
@@ -73,9 +73,15 @@ lint-frontend:
 format-frontend:
 	cd frontend && yarn format
 
-format-all: format format-frontend
+lint-website:
+	cd website && yarn lint
 
-lint-all: lint lint-frontend
+format-website:
+	cd website && yarn format
+
+format-all: format format-frontend format-website
+
+lint-all: lint lint-frontend lint-website
 
 typecheck:
 	uv run mypy .
@@ -83,7 +89,10 @@ typecheck:
 typecheck-frontend:
 	cd frontend && yarn type-check
 
-typecheck-all: typecheck typecheck-frontend
+typecheck-website:
+	cd website && yarn type-check
+
+typecheck-all: typecheck typecheck-frontend typecheck-website
 
 test:
 	uv run pytest
@@ -91,7 +100,10 @@ test:
 test-integration:
 	uv run pytest -m integration -v
 
-pre-merge: format-all lint-all typecheck-all test
+build-website:
+	cd website && yarn build
+
+pre-merge: format-all lint-all typecheck-all test 
 	@echo "✅ Pre-merge checks completed successfully. Ready to merge!"
 
 setup:
