@@ -1,36 +1,38 @@
 interface Step {
-  number: number
-  title: string
-  description: string
-  code?: string
-  language?: string
+  number: number;
+  title: string;
+  description: string;
+  code?: string;
+  language?: string;
 }
 
 const steps: Step[] = [
   {
     number: 1,
-    title: 'Define Seed Data',
-    description: 'Start with text content that your pipeline will process.',
+    title: "Define Seed Data",
+    description: "Start with text content that your pipeline will process.",
     code: `{
   "repetitions": 3,
   "metadata": {
     "content": "Electric cars reduce emissions but require charging infrastructure."
   }
 }`,
-    language: 'json'
+    language: "json",
   },
   {
     number: 2,
-    title: 'Build Pipeline',
-    description: 'Design your workflow using drag-and-drop blocks. Each block adds data to the accumulated state.',
+    title: "Build Pipeline",
+    description:
+      "Design your workflow using drag-and-drop blocks. Each block adds data to the accumulated state.",
     code: `StructuredGenerator      →        JSONValidatorBlock
           ↓                               ↓
-      generated          +        valid, parsed_json`
+      generated          +        valid, parsed_json`,
   },
   {
     number: 3,
-    title: 'Review Results',
-    description: 'Review your results with keyboard shortcuts and configure the view to easily see the needed data.',
+    title: "Review Results",
+    description:
+      "Review your results with keyboard shortcuts and configure the view to easily see the needed data.",
     code: `Keyboard Shortcuts:
 A → Accept  |  R → Reject  |  U → Pending
 E → Edit    |  N → Next    |  P → Previous
@@ -39,12 +41,13 @@ Field Configuration:
 Primary:   [parsed_json, valid]
 Secondary: [metadata.content]
 Hidden:    [... all other fields]`,
-    language: 'text'
+    language: "text",
   },
   {
     number: 4,
-    title: 'Export Data',
-    description: 'Export your data in JSONL format, filtered by status (accepted, rejected, pending).',
+    title: "Export Data",
+    description:
+      "Export your data in JSONL format, filtered by status (accepted, rejected, pending).",
     code: `{
   "id": 71,
   "metadata": {
@@ -62,9 +65,9 @@ Hidden:    [... all other fields]`,
   "created_at": "2025-10-25T10:30:00",
   "updated_at": "2025-10-25T10:31:15"
 }`,
-    language: 'json'
-  }
-]
+    language: "json",
+  },
+];
 
 export default function HowItWorks() {
   return (
@@ -80,11 +83,8 @@ export default function HowItWorks() {
 
         <div className="space-y-16">
           {steps.map((step, index) => (
-            <div
-              key={index}
-              className="flex flex-col lg:flex-row gap-8"
-            >
-              <div className={`flex-1 max-w-full ${index % 2 === 1 ? 'lg:order-2' : ''}`}>
+            <div key={index} className="flex flex-col lg:flex-row gap-8">
+              <div className={`flex-1 max-w-full ${index % 2 === 1 ? "lg:order-2" : ""}`}>
                 <div className="flex items-center gap-4 mb-4">
                   <div className="w-12 h-12 rounded-full bg-primary/20 border-2 border-primary flex items-center justify-center text-2xl font-bold text-primary shrink-0">
                     {step.number}
@@ -95,7 +95,7 @@ export default function HowItWorks() {
               </div>
 
               {step.code && (
-                <div className={`flex-1 ${index % 2 === 1 ? 'lg:order-1' : ''}`}>
+                <div className={`flex-1 ${index % 2 === 1 ? "lg:order-1" : ""}`}>
                   <div className="card-dark p-6">
                     <pre className="text-sm text-gray-300 overflow-x-auto">
                       <code>{step.code}</code>
@@ -108,5 +108,5 @@ export default function HowItWorks() {
         </div>
       </div>
     </section>
-  )
+  );
 }

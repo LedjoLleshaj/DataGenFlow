@@ -1,11 +1,11 @@
-import { Link, useLocation } from 'react-router-dom'
-import { useState } from 'react'
-import Button from './Button'
+import { Link, useLocation } from "react-router-dom";
+import { useState } from "react";
+import Button from "./Button";
 
 export default function Header() {
-  const location = useLocation()
-  const isDocsPage = location.pathname.startsWith('/docs')
-  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const location = useLocation();
+  const isDocsPage = location.pathname.startsWith("/docs");
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-gray-800">
@@ -24,7 +24,7 @@ export default function Header() {
             <Link
               to="/docs/overview"
               className={`text-sm hover:text-primary transition-colors ${
-                isDocsPage ? 'text-primary' : 'text-gray-300'
+                isDocsPage ? "text-primary" : "text-gray-300"
               }`}
             >
               Documentation
@@ -50,8 +50,8 @@ export default function Header() {
               variant="primary"
               size="sm"
               onClick={() => {
-                const element = document.getElementById('quick-start')
-                element?.scrollIntoView({ behavior: 'smooth' })
+                const element = document.getElementById("quick-start");
+                element?.scrollIntoView({ behavior: "smooth" });
               }}
             >
               Get Started
@@ -66,9 +66,19 @@ export default function Header() {
           >
             <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               {isMenuOpen ? (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               ) : (
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 6h16M4 12h16M4 18h16"
+                />
               )}
             </svg>
           </button>
@@ -80,7 +90,7 @@ export default function Header() {
             <Link
               to="/docs/overview"
               className={`block text-sm hover:text-primary transition-colors ${
-                isDocsPage ? 'text-primary' : 'text-gray-300'
+                isDocsPage ? "text-primary" : "text-gray-300"
               }`}
               onClick={() => setIsMenuOpen(false)}
             >
@@ -108,9 +118,9 @@ export default function Header() {
               variant="primary"
               size="sm"
               onClick={() => {
-                const element = document.getElementById('quick-start')
-                element?.scrollIntoView({ behavior: 'smooth' })
-                setIsMenuOpen(false)
+                const element = document.getElementById("quick-start");
+                element?.scrollIntoView({ behavior: "smooth" });
+                setIsMenuOpen(false);
               }}
               className="w-full"
             >
@@ -120,5 +130,5 @@ export default function Header() {
         )}
       </nav>
     </header>
-  )
+  );
 }

@@ -1,4 +1,4 @@
-import Button from '../shared/Button'
+import Button from "../shared/Button";
 
 export default function Hero() {
   return (
@@ -11,7 +11,8 @@ export default function Hero() {
       {/* content */}
       <div className="relative z-10 container-custom text-center pt-20">
         <h1 className="text-5xl md:text-7xl font-bold mb-6">
-          Data Generation<br />
+          Data Generation
+          <br />
           From <span className="gradient-text">Visual Pipelines</span>
         </h1>
 
@@ -24,8 +25,8 @@ export default function Hero() {
             variant="primary"
             size="lg"
             onClick={() => {
-              const element = document.getElementById('quick-start')
-              element?.scrollIntoView({ behavior: 'smooth' })
+              const element = document.getElementById("quick-start");
+              element?.scrollIntoView({ behavior: "smooth" });
             }}
           >
             Get Started
@@ -35,8 +36,8 @@ export default function Hero() {
             variant="outline"
             size="lg"
             onClick={() => {
-              const element = document.getElementById('demo')
-              element?.scrollIntoView({ behavior: 'smooth' })
+              const element = document.getElementById("demo");
+              element?.scrollIntoView({ behavior: "smooth" });
             }}
           >
             View Demo
@@ -51,7 +52,10 @@ export default function Hero() {
               controls
               poster={`${import.meta.env.BASE_URL}images/logo/banner.png`}
             >
-              <source src={`${import.meta.env.BASE_URL}images/video/minimal.mp4`} type="video/mp4" />
+              <source
+                src={`${import.meta.env.BASE_URL}images/video/minimal.mp4`}
+                type="video/mp4"
+              />
               Your browser does not support the video tag.
             </video>
             Check at the repo for the full video showcasing more features!
@@ -59,5 +63,5 @@ export default function Hero() {
         </div>
       </div>
     </section>
-  )
+  );
 }

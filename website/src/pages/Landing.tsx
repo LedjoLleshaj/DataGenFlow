@@ -1,5 +1,5 @@
-import { Header } from '@/components/shared'
-import { Hero, Features, HowItWorks, QuickStart, Footer } from '@/components/landing'
+import { Header } from "@/components/shared";
+import { Hero, Features, HowItWorks, QuickStart, Footer } from "@/components/landing";
 
 export default function Landing() {
   return (
@@ -13,5 +13,5 @@ export default function Landing() {
       </main>
       <Footer />
     </div>
-  )
+  );
 }
