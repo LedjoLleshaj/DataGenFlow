@@ -34,11 +34,8 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(title="DataGenFlow", version="0.1.0", lifespan=lifespan)
 
-# api router
-api = FastAPI()
 
-
-@api.post("/generate_from_file")
+@app.post("/generate_from_file")
 async def generate_from_file(
     file: UploadFile = File(...), pipeline_id: int = Form(...)
 ) -> dict[str, Any]:
@@ -89,7 +86,7 @@ async def generate_from_file(
     return {"total": total, "success": success, "failed": failed}
 
 
-@api.post("/generate")
+@app.post("/generate")
 async def generate(file: UploadFile = File(...), pipeline_id: int = Form(...)) -> dict[str, Any]:
     """start a new background job for pipeline execution from seed file"""
     if not file.filename or not file.filename.endswith(".json"):
@@ -166,7 +163,7 @@ async def generate(file: UploadFile = File(...), pipeline_id: int = Form(...)) -
     return {"job_id": job_id}
 
 
-@api.get("/jobs/active")
+@app.get("/jobs/active")
 async def get_active_job() -> dict[str, Any] | None:
     """get currently running job"""
     active_job = job_queue.get_active_job()
@@ -175,7 +172,7 @@ async def get_active_job() -> dict[str, Any] | None:
     return active_job
 
 
-@api.get("/jobs/{job_id}")
+@app.get("/jobs/{job_id}")
 async def get_job(job_id: int) -> dict[str, Any]:
     """get job status by id"""
     # try memory first
@@ -190,7 +187,7 @@ async def get_job(job_id: int) -> dict[str, Any]:
     return job
 
 
-@api.delete("/jobs/{job_id}")
+@app.delete("/jobs/{job_id}")
 async def cancel_job(job_id: int) -> dict[str, str]:
     """cancel a running job"""
     success = job_queue.cancel_job(job_id)
@@ -203,7 +200,7 @@ async def cancel_job(job_id: int) -> dict[str, str]:
     return {"message": "Job cancelled"}
 
 
-@api.get("/jobs")
+@app.get("/jobs")
 async def list_jobs(pipeline_id: int | None = None) -> list[dict[str, Any]]:
     """list jobs, optionally filtered by pipeline_id"""
     # try memory first for recent jobs
@@ -216,7 +213,7 @@ async def list_jobs(pipeline_id: int | None = None) -> list[dict[str, Any]]:
     return await storage.list_jobs(pipeline_id=pipeline_id, limit=10)
 
 
-@api.get("/records")
+@app.get("/records")
 async def get_records(
     status: RecordStatus | None = None,
     limit: int = 100,
@@ -230,7 +227,7 @@ async def get_records(
     return [record.model_dump() for record in records]
 
 
-@api.get("/records/{record_id}")
+@app.get("/records/{record_id}")
 async def get_record(record_id: int) -> dict[str, Any]:
     record = await storage.get_by_id(record_id)
     if not record:
@@ -238,7 +235,7 @@ async def get_record(record_id: int) -> dict[str, Any]:
     return record.model_dump()
 
 
-@api.put("/records/{record_id}")
+@app.put("/records/{record_id}")
 async def update_record(record_id: int, update: RecordUpdate) -> dict[str, bool]:
     updates = update.model_dump(exclude_unset=True)
 
@@ -260,7 +257,7 @@ async def update_record(record_id: int, update: RecordUpdate) -> dict[str, bool]
     return {"success": True}
 
 
-@api.delete("/records")
+@app.delete("/records")
 async def delete_all_records(job_id: int | None = None) -> dict[str, Any]:
     count = await storage.delete_all_records(job_id=job_id)
     # also remove from in-memory job queue
@@ -269,7 +266,7 @@ async def delete_all_records(job_id: int | None = None) -> dict[str, Any]:
     return {"deleted": count}
 
 
-@api.get("/export")
+@app.get("/export")
 async def export_records(
     status: RecordStatus | None = None, job_id: int | None = None
 ) -> PlainTextResponse:
@@ -277,7 +274,7 @@ async def export_records(
     return PlainTextResponse(content=jsonl, media_type="application/x-ndjson")
 
 
-@api.get("/export/download")
+@app.get("/export/download")
 async def download_export(
     status: RecordStatus | None = None, job_id: int | None = None
 ) -> FileResponse:
@@ -291,12 +288,12 @@ async def download_export(
     )
 
 
-@api.get("/blocks")
+@app.get("/blocks")
 async def list_blocks() -> list[dict[str, Any]]:
     return registry.list_blocks()
 
 
-@api.post("/pipelines")
+@app.post("/pipelines")
 async def create_pipeline(pipeline_data: dict[str, Any]) -> dict[str, Any]:
     name = pipeline_data.get("name")
     blocks = pipeline_data.get("blocks")
@@ -308,12 +305,12 @@ async def create_pipeline(pipeline_data: dict[str, Any]) -> dict[str, Any]:
     return {"id": pipeline_id, "name": name}
 
 
-@api.get("/pipelines")
+@app.get("/pipelines")
 async def list_pipelines() -> list[dict[str, Any]]:
     return await storage.list_pipelines()
 
 
-@api.get("/pipelines/{pipeline_id}")
+@app.get("/pipelines/{pipeline_id}")
 async def get_pipeline(pipeline_id: int) -> dict[str, Any]:
     pipeline = await storage.get_pipeline(pipeline_id)
     if not pipeline:
@@ -321,7 +318,7 @@ async def get_pipeline(pipeline_id: int) -> dict[str, Any]:
     return pipeline
 
 
-@api.put("/pipelines/{pipeline_id}")
+@app.put("/pipelines/{pipeline_id}")
 async def update_pipeline(pipeline_id: int, pipeline_data: dict[str, Any]) -> dict[str, Any]:
     name = pipeline_data.get("name")
     blocks = pipeline_data.get("blocks")
@@ -336,7 +333,7 @@ async def update_pipeline(pipeline_id: int, pipeline_data: dict[str, Any]) -> di
     return {"id": pipeline_id, "name": name}
 
 
-@api.post("/pipelines/{pipeline_id}/execute", response_model=None)
+@app.post("/pipelines/{pipeline_id}/execute", response_model=None)
 async def execute_pipeline(pipeline_id: int, data: dict[str, Any]) -> dict[str, Any] | JSONResponse:
     try:
         pipeline_data = await storage.get_pipeline(pipeline_id)
@@ -360,7 +357,7 @@ async def execute_pipeline(pipeline_id: int, data: dict[str, Any]) -> dict[str, 
         return JSONResponse(status_code=500, content={"error": f"Unexpected error: {str(e)}"})
 
 
-@api.get("/pipelines/{pipeline_id}/accumulated_state_schema")
+@app.get("/pipelines/{pipeline_id}/accumulated_state_schema")
 async def get_accumulated_state_schema(pipeline_id: int) -> dict[str, list[str]]:
     """get list of field names that will be in accumulated state for this pipeline"""
     pipeline_data = await storage.get_pipeline(pipeline_id)
@@ -372,7 +369,7 @@ async def get_accumulated_state_schema(pipeline_id: int) -> dict[str, list[str]]
     return {"fields": fields}
 
 
-@api.put("/pipelines/{pipeline_id}/validation_config")
+@app.put("/pipelines/{pipeline_id}/validation_config")
 async def update_validation_config(
     pipeline_id: int, validation_config: dict[str, Any]
 ) -> dict[str, bool]:
@@ -402,7 +399,7 @@ async def update_validation_config(
     return {"success": True}
 
 
-@api.delete("/pipelines/{pipeline_id}")
+@app.delete("/pipelines/{pipeline_id}")
 async def delete_pipeline(pipeline_id: int) -> dict[str, bool]:
     # get all jobs for this pipeline to remove from memory
     jobs = await storage.list_jobs(pipeline_id=pipeline_id, limit=1000)
@@ -419,13 +416,13 @@ async def delete_pipeline(pipeline_id: int) -> dict[str, bool]:
     return {"success": True}
 
 
-@api.get("/templates")
+@app.get("/templates")
 async def list_templates() -> list[dict[str, Any]]:
     """List all available pipeline templates"""
     return template_registry.list_templates()
 
 
-@api.post("/pipelines/from_template/{template_id}")
+@app.post("/pipelines/from_template/{template_id}")
 async def create_pipeline_from_template(template_id: str) -> dict[str, Any]:
     """Create a new pipeline from a template"""
     template = template_registry.get_template(template_id)
@@ -441,7 +438,7 @@ async def create_pipeline_from_template(template_id: str) -> dict[str, Any]:
 
 
 # mount api routes
-app.mount("/api", api)
+app.mount("/api", app)
 
 # serve frontend (built react app)
 frontend_dir = Path("frontend/build")
