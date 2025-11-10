@@ -35,6 +35,11 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(title="DataGenFlow", version="0.1.0", lifespan=lifespan)
 
 
+@app.get("/health")
+async def health() -> dict[str, str]:
+    return {"status": "healthy"}
+
+
 @app.post("/generate_from_file")
 async def generate_from_file(
     file: UploadFile = File(...), pipeline_id: int = Form(...)
