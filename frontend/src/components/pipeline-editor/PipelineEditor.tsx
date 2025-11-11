@@ -56,6 +56,8 @@ interface Block {
   inputs: string[];
   outputs: string[];
   config_schema: Record<string, any>;
+  category: string;
+  description?: string;
 }
 
 interface PipelineEditorProps {
@@ -593,7 +595,7 @@ export default function PipelineEditor({
           <Button onClick={handleSave} disabled={saving} variant="default">
             {saving ? "Saving..." : "Save Pipeline"}
           </Button>
-          <Button onClick={onClose}>
+          <Button onClick={onClose} variant="secondary">
             <XIcon /> Close
           </Button>
         </Box>

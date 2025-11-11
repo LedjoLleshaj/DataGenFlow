@@ -29,7 +29,7 @@ export default function Pipelines() {
     loadTemplates();
   }, []);
 
-  // hide navigation when pipeline editor is open
+  // hide navigation for immersive full-screen editing experience
   useEffect(() => {
     setHideNavigation(editing !== null);
   }, [editing, setHideNavigation]);
@@ -46,7 +46,7 @@ export default function Pipelines() {
       const data = await res.json();
       setTemplates(data);
     } catch {
-      // silent fail - templates are optional
+      // templates are optional feature, don't disrupt user experience if unavailable
     }
   };
 
@@ -68,7 +68,6 @@ export default function Pipelines() {
   const savePipeline = async (pipeline: any) => {
     try {
       if (editing?.mode === "new") {
-        // create new pipeline
         const res = await fetch("/api/pipelines", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -78,7 +77,6 @@ export default function Pipelines() {
         if (!res.ok) throw new Error("Failed to create pipeline");
         toast.success("Pipeline created successfully");
       } else if (editing?.mode === "edit" && editing.pipeline) {
-        // update existing pipeline
         const res = await fetch(`/api/pipelines/${editing.pipeline.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -114,7 +112,6 @@ export default function Pipelines() {
     if (!confirm(`Delete all ${pipelines.length} pipeline(s)? This cannot be undone!`)) return;
 
     try {
-      // delete each pipeline
       await Promise.all(
         pipelines.map((pipeline) => fetch(`/api/pipelines/${pipeline.id}`, { method: "DELETE" }))
       );
@@ -129,17 +126,40 @@ export default function Pipelines() {
   const downloadExampleSeed = (template: Template) => {
     if (!template.example_seed) return;
 
-    const blob = new Blob([JSON.stringify(template.example_seed, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `seed_${template.id}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    // check if this is a markdown seed (has file_content instead of content)
+    const isMarkdownSeed =
+      Array.isArray(template.example_seed) &&
+      template.example_seed.length > 0 &&
+      template.example_seed[0].metadata?.file_content;
+
+    if (isMarkdownSeed) {
+      // download markdown content
+      const markdownContent = template.example_seed[0].metadata.file_content;
+      const blob = new Blob([markdownContent], {
+        type: "text/markdown",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `seed_${template.id}.md`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } else {
+      // download as json
+      const blob = new Blob([JSON.stringify(template.example_seed, null, 2)], {
+        type: "application/json",
+      });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `seed_${template.id}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
   };
 
   const copyToClipboard = (text: string) => {
@@ -193,7 +213,7 @@ export default function Pipelines() {
           <Box
             sx={{
               display: "grid",
-              gridTemplateColumns: "repeat(auto-fill, minmax(250px, 1fr))",
+              gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
               gap: 3,
             }}
           >
@@ -222,10 +242,11 @@ export default function Pipelines() {
                   {template.description}
                 </Text>
 
-                <Box sx={{ display: "flex", gap: 2 }}>
+                <Box sx={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
                   <Button
                     variant="default"
-                    sx={{ flex: 1 }}
+                    size="small"
+                    sx={{ flex: "1 1 auto", minWidth: "120px" }}
                     onClick={() => createFromTemplate(template.id)}
                   >
                     Use Template
@@ -233,7 +254,9 @@ export default function Pipelines() {
                   {template.example_seed && (
                     <Button
                       variant="default"
+                      size="small"
                       leadingVisual={DownloadIcon}
+                      sx={{ flex: "1 1 auto", minWidth: "140px" }}
                       onClick={(e) => {
                         e.stopPropagation();
                         downloadExampleSeed(template);

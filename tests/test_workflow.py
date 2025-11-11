@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from lib.errors import BlockNotFoundError
+from lib.errors import BlockNotFoundError, ValidationError
 from lib.workflow import Pipeline
 
 
@@ -21,7 +21,9 @@ async def test_pipeline_single_block():
         mock_gen.return_value = MagicMock(
             choices=[MagicMock(message=MagicMock(content="generated response"))]
         )
-        result, trace, trace_id = await pipeline.execute({"system": "test", "user": "test"})
+        exec_result = await pipeline.execute({"system": "test", "user": "test"})
+        assert isinstance(exec_result, tuple)
+        result, trace, trace_id = exec_result
 
         assert result["assistant"] == "generated response"
         assert len(trace) == 1
@@ -45,7 +47,9 @@ async def test_pipeline_multiple_blocks():
         mock_gen.return_value = MagicMock(
             choices=[MagicMock(message=MagicMock(content="hello world"))]
         )
-        result, trace, trace_id = await pipeline.execute({"system": "test", "user": "test"})
+        exec_result = await pipeline.execute({"system": "test", "user": "test"})
+        assert isinstance(exec_result, tuple)
+        result, trace, trace_id = exec_result
 
         assert result["assistant"] == "hello world"
         assert result["valid"] is True
@@ -76,3 +80,58 @@ async def test_pipeline_to_dict():
     assert serialized["name"] == "Test Pipeline"
     assert len(serialized["blocks"]) == 1
     assert serialized["blocks"][0]["type"] == "TextGenerator"
+
+
+@pytest.mark.asyncio
+async def test_multiplier_block_must_be_first():
+    pipeline_def = {
+        "name": "Invalid Multiplier Pipeline",
+        "blocks": [
+            {"type": "TextGenerator", "config": {}},
+            {"type": "MarkdownMultiplierBlock", "config": {}},
+        ],
+    }
+
+    with pytest.raises(ValidationError, match="must be first"):
+        Pipeline.load_from_dict(pipeline_def)
+
+
+@pytest.mark.asyncio
+async def test_only_one_multiplier_allowed():
+    pipeline_def = {
+        "name": "Multiple Multipliers Pipeline",
+        "blocks": [
+            {"type": "MarkdownMultiplierBlock", "config": {}},
+            {"type": "MarkdownMultiplierBlock", "config": {}},
+        ],
+    }
+
+    with pytest.raises(ValidationError, match="Only one multiplier"):
+        Pipeline.load_from_dict(pipeline_def)
+
+
+@pytest.mark.asyncio
+async def test_multiplier_pipeline_execution():
+    pipeline_def = {
+        "name": "Multiplier Pipeline",
+        "blocks": [
+            {
+                "type": "MarkdownMultiplierBlock",
+                "config": {"parser_type": "sentence", "chunk_size": 100, "chunk_overlap": 10},
+            },
+            {"type": "ValidatorBlock", "config": {"min_length": 1}},
+        ],
+    }
+
+    pipeline = Pipeline.load_from_dict(pipeline_def)
+
+    markdown_content = "Sentence one. Sentence two. Sentence three."
+    results = await pipeline.execute({"file_content": markdown_content})
+
+    assert isinstance(results, list)
+    assert len(results) > 0
+
+    for result_data, trace, trace_id in results:
+        assert "valid" in result_data
+        assert isinstance(trace, list)
+        assert isinstance(trace_id, str)

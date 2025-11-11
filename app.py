@@ -4,7 +4,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, AsyncIterator
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, JSONResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from loguru import logger
@@ -18,10 +18,22 @@ from lib.schema_utils import compute_accumulated_state_schema
 from lib.storage import Storage
 from lib.templates import template_registry
 from lib.workflow import Pipeline as WorkflowPipeline
-from models import Record, RecordStatus, RecordUpdate, SeedInput
+from models import Record, RecordStatus, RecordUpdate, SeedInput, SeedValidationRequest
 
 storage = Storage()
 job_queue = JobQueue()
+
+
+def is_multiplier_pipeline(blocks: list[dict[str, Any]]) -> bool:
+    if not blocks:
+        return False
+
+    first_block_type = blocks[0].get("type")
+    if not first_block_type:
+        return False
+
+    block_class = registry.get_block_class(first_block_type)
+    return getattr(block_class, "is_multiplier", False)
 
 
 @asynccontextmanager
@@ -33,6 +45,7 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="DataGenFlow", version="0.1.0", lifespan=lifespan)
+api_router = APIRouter()
 
 
 @app.get("/health")
@@ -40,13 +53,104 @@ async def health() -> dict[str, str]:
     return {"status": "healthy"}
 
 
-@app.post("/generate_from_file")
+def _validate_seed_structure(seed: dict[str, Any]) -> tuple[bool, bool, int]:
+    """check seed structure and repetitions.
+
+    returns (has_structure_error, has_repetition_error, zero_rep_count)
+    """
+    if not isinstance(seed, dict):
+        return (True, False, 0)
+
+    if "metadata" not in seed:
+        return (True, False, 0)
+
+    if not isinstance(seed["metadata"], dict):
+        return (True, False, 0)
+
+    repetitions = seed.get("repetitions", 1)
+    if repetitions == 0:
+        return (False, False, 1)
+    if not isinstance(repetitions, int) or repetitions < 0:
+        return (False, True, 0)
+
+    return (False, False, 0)
+
+
+def _validate_seed_fields(seed: dict[str, Any], required_inputs: list[str]) -> set[str]:
+    """return set of missing required fields in seed metadata"""
+    if not isinstance(seed, dict) or "metadata" not in seed:
+        return set()
+
+    metadata = seed["metadata"]
+    if not isinstance(metadata, dict):
+        return set()
+
+    return {field for field in required_inputs if field not in metadata}
+
+
+def _build_validation_errors(
+    structure_err: bool, repetition_err: bool, missing: set[str], block_name: str
+) -> list[str]:
+    """build error messages from validation flags"""
+    errors = []
+    if structure_err:
+        errors.append("Some seeds are not well structured (missing 'metadata' or invalid format)")
+    if repetition_err:
+        errors.append("Some seeds have invalid repetitions (must be positive integer)")
+    if missing:
+        fields_str = ", ".join(f"'{field}'" for field in sorted(missing))
+        errors.append(
+            f"Some seeds missing required field(s): {fields_str} (needed by {block_name} block)"
+        )
+    return errors
+
+
+@api_router.post("/seeds/validate")
+async def validate_seeds(request: SeedValidationRequest) -> dict[str, Any]:
+    """validate seeds against pipeline's first block requirements"""
+    pipeline_data = await storage.get_pipeline(request.pipeline_id)
+    if not pipeline_data:
+        raise HTTPException(status_code=404, detail="pipeline not found")
+
+    blocks = pipeline_data["definition"]["blocks"]
+    if not blocks:
+        raise HTTPException(status_code=400, detail="pipeline has no blocks")
+
+    block_class = registry.get_block_class(blocks[0]["type"])
+    if not block_class:
+        raise HTTPException(status_code=400, detail=f"block type '{blocks[0]['type']}' not found")
+
+    required_inputs = block_class.get_required_fields(blocks[0].get("config", {}))
+    structure_err, repetition_err, zero_count, missing_fields = False, False, 0, set()
+
+    for seed in request.seeds:
+        s_err, r_err, z_count = _validate_seed_structure(seed)
+        structure_err, repetition_err, zero_count = (
+            structure_err or s_err,
+            repetition_err or r_err,
+            zero_count + z_count,
+        )
+        missing_fields.update(_validate_seed_fields(seed, required_inputs))
+
+    errors = _build_validation_errors(
+        structure_err, repetition_err, missing_fields, block_class.name
+    )
+    warnings = (
+        [f"{zero_count} seed(s) have repetitions=0 (will not generate records)"]
+        if zero_count > 0
+        else []
+    )
+    return {"valid": len(errors) == 0, "errors": errors, "warnings": warnings}
+
+
+@api_router.post("/generate_from_file")
 async def generate_from_file(
     file: UploadFile = File(...), pipeline_id: int = Form(...)
 ) -> dict[str, Any]:
     if not file.filename or not file.filename.endswith(".json"):
         raise HTTPException(
-            status_code=400, detail="Only JSON files are accepted. Please upload a .json file."
+            status_code=400,
+            detail="Only JSON files are accepted. Please upload a .json file.",
         )
 
     # load pipeline
@@ -74,7 +178,10 @@ async def generate_from_file(
             total += 1
             try:
                 # execute pipeline with metadata as input
-                result, trace, trace_id = await pipeline.execute(seed.metadata)
+                exec_result = await pipeline.execute(seed.metadata)
+                # help mypy understand this is the tuple variant
+                assert isinstance(exec_result, tuple)
+                result, trace, trace_id = exec_result
 
                 # create record from pipeline execution
                 record = Record(
@@ -91,24 +198,17 @@ async def generate_from_file(
     return {"total": total, "success": success, "failed": failed}
 
 
-@app.post("/generate")
-async def generate(file: UploadFile = File(...), pipeline_id: int = Form(...)) -> dict[str, Any]:
-    """start a new background job for pipeline execution from seed file"""
-    if not file.filename or not file.filename.endswith(".json"):
-        raise HTTPException(
-            status_code=400, detail="Only JSON files are accepted. Please upload a .json file."
-        )
+async def _parse_markdown_file(content: bytes) -> tuple[list[dict[str, Any]], int]:
+    """parse markdown file and return seeds and total samples"""
+    markdown_content = content.decode("utf-8")
+    if not markdown_content.strip():
+        raise HTTPException(status_code=400, detail="Markdown file is empty")
+    seeds = [{"repetitions": 1, "metadata": {"file_content": markdown_content}}]
+    return seeds, 1
 
-    # check if there's already an active job
-    active_job = job_queue.get_active_job()
-    if active_job:
-        detail_msg = (
-            f"Job {active_job['id']} is already running. Cancel it first or wait for completion."
-        )
-        raise HTTPException(status_code=409, detail=detail_msg)
 
-    # parse seed file to calculate total samples
-    content = await file.read()
+async def _parse_json_file(content: bytes) -> tuple[list[dict[str, Any]], int]:
+    """parse and validate json seed file, return seeds and total samples"""
     try:
         data = json.loads(content)
     except json.JSONDecodeError as e:
@@ -117,15 +217,12 @@ async def generate(file: UploadFile = File(...), pipeline_id: int = Form(...)) -
             detail=f"The JSON file is invalid: {str(e)}. Please check your file syntax.",
         )
 
-    # validate seed structure
     if not isinstance(data, (list, dict)):
         raise HTTPException(
             status_code=400, detail="The JSON file must contain an object or an array of objects."
         )
 
     seeds = data if isinstance(data, list) else [data]
-
-    # validate each seed has required structure
     for i, seed in enumerate(seeds):
         if not isinstance(seed, dict):
             raise HTTPException(
@@ -137,38 +234,62 @@ async def generate(file: UploadFile = File(...), pipeline_id: int = Form(...)) -
                 status_code=400, detail=f"Seed {i + 1} is missing the required 'metadata' field."
             )
 
-    # calculate total executions from all seeds
-    total_samples = sum(
-        seed.get("repetitions", 1) if isinstance(seed.get("repetitions"), int) else 1
+    total = sum(
+        seed.get("repetitions", 1) if isinstance(seed.get("repetitions", 1), int) else 1
         for seed in seeds
     )
+    return seeds, total
 
-    # save file temporarily (cross-platform)
-    fd, tmp_path = tempfile.mkstemp(suffix=".json", prefix=f"seed_{pipeline_id}_")
-    tmp_file = Path(tmp_path)
+
+async def _create_temp_seed_file(
+    seeds: list[dict[str, Any]], content: bytes, is_markdown: bool, pipeline_id: int
+) -> Path:
+    """create temp file with seed data and return path"""
+    import os
+
+    file_suffix = ".md" if is_markdown else ".json"
+    fd, tmp_path = tempfile.mkstemp(suffix=file_suffix, prefix=f"seed_{pipeline_id}_")
     try:
-        # write content to file descriptor first, then close it
-        import os
-
-        os.write(fd, content)
+        os.write(fd, json.dumps(seeds).encode("utf-8") if is_markdown else content)
         os.close(fd)
+        return Path(tmp_path)
     except Exception:
         os.close(fd)
         raise
 
-    # create job in database
+
+@api_router.post("/generate")
+async def generate(file: UploadFile = File(...), pipeline_id: int = Form(...)) -> dict[str, Any]:
+    """start a new background job for pipeline execution from seed file"""
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="No filename provided")
+
+    is_markdown = file.filename.endswith(".md")
+    if not is_markdown and not file.filename.endswith(".json"):
+        raise HTTPException(status_code=400, detail="Only .json or .md files are accepted")
+
+    active_job = job_queue.get_active_job()
+    if active_job:
+        raise HTTPException(
+            status_code=409,
+            detail=f"Job {active_job['id']} is already running. "
+            "Cancel it first or wait for completion.",
+        )
+
+    content = await file.read()
+    seeds, total_samples = await (
+        _parse_markdown_file(content) if is_markdown else _parse_json_file(content)
+    )
+    tmp_file = await _create_temp_seed_file(seeds, content, is_markdown, pipeline_id)
+
     job_id = await storage.create_job(pipeline_id, total_samples, status="running")
-
-    # register job in memory queue
     job_queue.create_job(job_id, pipeline_id, total_samples, status="running")
-
-    # start background processing with file path
     process_job_in_thread(job_id, pipeline_id, str(tmp_file), job_queue, storage)
 
     return {"job_id": job_id}
 
 
-@app.get("/jobs/active")
+@api_router.get("/jobs/active")
 async def get_active_job() -> dict[str, Any] | None:
     """get currently running job"""
     active_job = job_queue.get_active_job()
@@ -177,7 +298,7 @@ async def get_active_job() -> dict[str, Any] | None:
     return active_job
 
 
-@app.get("/jobs/{job_id}")
+@api_router.get("/jobs/{job_id}")
 async def get_job(job_id: int) -> dict[str, Any]:
     """get job status by id"""
     # try memory first
@@ -192,7 +313,7 @@ async def get_job(job_id: int) -> dict[str, Any]:
     return job
 
 
-@app.delete("/jobs/{job_id}")
+@api_router.delete("/jobs/{job_id}")
 async def cancel_job(job_id: int) -> dict[str, str]:
     """cancel a running job"""
     success = job_queue.cancel_job(job_id)
@@ -205,7 +326,7 @@ async def cancel_job(job_id: int) -> dict[str, str]:
     return {"message": "Job cancelled"}
 
 
-@app.get("/jobs")
+@api_router.get("/jobs")
 async def list_jobs(pipeline_id: int | None = None) -> list[dict[str, Any]]:
     """list jobs, optionally filtered by pipeline_id"""
     # try memory first for recent jobs
@@ -218,7 +339,7 @@ async def list_jobs(pipeline_id: int | None = None) -> list[dict[str, Any]]:
     return await storage.list_jobs(pipeline_id=pipeline_id, limit=10)
 
 
-@app.get("/records")
+@api_router.get("/records")
 async def get_records(
     status: RecordStatus | None = None,
     limit: int = 100,
@@ -227,12 +348,16 @@ async def get_records(
     pipeline_id: int | None = None,
 ) -> list[dict[str, Any]]:
     records = await storage.get_all(
-        status=status, limit=limit, offset=offset, job_id=job_id, pipeline_id=pipeline_id
+        status=status,
+        limit=limit,
+        offset=offset,
+        job_id=job_id,
+        pipeline_id=pipeline_id,
     )
     return [record.model_dump() for record in records]
 
 
-@app.get("/records/{record_id}")
+@api_router.get("/records/{record_id}")
 async def get_record(record_id: int) -> dict[str, Any]:
     record = await storage.get_by_id(record_id)
     if not record:
@@ -240,7 +365,7 @@ async def get_record(record_id: int) -> dict[str, Any]:
     return record.model_dump()
 
 
-@app.put("/records/{record_id}")
+@api_router.put("/records/{record_id}")
 async def update_record(record_id: int, update: RecordUpdate) -> dict[str, bool]:
     updates = update.model_dump(exclude_unset=True)
 
@@ -262,7 +387,7 @@ async def update_record(record_id: int, update: RecordUpdate) -> dict[str, bool]
     return {"success": True}
 
 
-@app.delete("/records")
+@api_router.delete("/records")
 async def delete_all_records(job_id: int | None = None) -> dict[str, Any]:
     count = await storage.delete_all_records(job_id=job_id)
     # also remove from in-memory job queue
@@ -271,7 +396,7 @@ async def delete_all_records(job_id: int | None = None) -> dict[str, Any]:
     return {"deleted": count}
 
 
-@app.get("/export")
+@api_router.get("/export")
 async def export_records(
     status: RecordStatus | None = None, job_id: int | None = None
 ) -> PlainTextResponse:
@@ -279,7 +404,7 @@ async def export_records(
     return PlainTextResponse(content=jsonl, media_type="application/x-ndjson")
 
 
-@app.get("/export/download")
+@api_router.get("/export/download")
 async def download_export(
     status: RecordStatus | None = None, job_id: int | None = None
 ) -> FileResponse:
@@ -293,12 +418,12 @@ async def download_export(
     )
 
 
-@app.get("/blocks")
+@api_router.get("/blocks")
 async def list_blocks() -> list[dict[str, Any]]:
     return registry.list_blocks()
 
 
-@app.post("/pipelines")
+@api_router.post("/pipelines")
 async def create_pipeline(pipeline_data: dict[str, Any]) -> dict[str, Any]:
     name = pipeline_data.get("name")
     blocks = pipeline_data.get("blocks")
@@ -310,20 +435,24 @@ async def create_pipeline(pipeline_data: dict[str, Any]) -> dict[str, Any]:
     return {"id": pipeline_id, "name": name}
 
 
-@app.get("/pipelines")
+@api_router.get("/pipelines")
 async def list_pipelines() -> list[dict[str, Any]]:
     return await storage.list_pipelines()
 
 
-@app.get("/pipelines/{pipeline_id}")
+@api_router.get("/pipelines/{pipeline_id}")
 async def get_pipeline(pipeline_id: int) -> dict[str, Any]:
     pipeline = await storage.get_pipeline(pipeline_id)
     if not pipeline:
         raise HTTPException(status_code=404, detail="pipeline not found")
+
+    blocks = pipeline.get("definition", {}).get("blocks", [])
+    pipeline["first_block_is_multiplier"] = is_multiplier_pipeline(blocks)
+
     return pipeline
 
 
-@app.put("/pipelines/{pipeline_id}")
+@api_router.put("/pipelines/{pipeline_id}")
 async def update_pipeline(pipeline_id: int, pipeline_data: dict[str, Any]) -> dict[str, Any]:
     name = pipeline_data.get("name")
     blocks = pipeline_data.get("blocks")
@@ -338,7 +467,7 @@ async def update_pipeline(pipeline_id: int, pipeline_data: dict[str, Any]) -> di
     return {"id": pipeline_id, "name": name}
 
 
-@app.post("/pipelines/{pipeline_id}/execute", response_model=None)
+@api_router.post("/pipelines/{pipeline_id}/execute", response_model=None)
 async def execute_pipeline(pipeline_id: int, data: dict[str, Any]) -> dict[str, Any] | JSONResponse:
     try:
         pipeline_data = await storage.get_pipeline(pipeline_id)
@@ -362,7 +491,7 @@ async def execute_pipeline(pipeline_id: int, data: dict[str, Any]) -> dict[str, 
         return JSONResponse(status_code=500, content={"error": f"Unexpected error: {str(e)}"})
 
 
-@app.get("/pipelines/{pipeline_id}/accumulated_state_schema")
+@api_router.get("/pipelines/{pipeline_id}/accumulated_state_schema")
 async def get_accumulated_state_schema(pipeline_id: int) -> dict[str, list[str]]:
     """get list of field names that will be in accumulated state for this pipeline"""
     pipeline_data = await storage.get_pipeline(pipeline_id)
@@ -374,7 +503,7 @@ async def get_accumulated_state_schema(pipeline_id: int) -> dict[str, list[str]]
     return {"fields": fields}
 
 
-@app.put("/pipelines/{pipeline_id}/validation_config")
+@api_router.put("/pipelines/{pipeline_id}/validation_config")
 async def update_validation_config(
     pipeline_id: int, validation_config: dict[str, Any]
 ) -> dict[str, bool]:
@@ -404,7 +533,7 @@ async def update_validation_config(
     return {"success": True}
 
 
-@app.delete("/pipelines/{pipeline_id}")
+@api_router.delete("/pipelines/{pipeline_id}")
 async def delete_pipeline(pipeline_id: int) -> dict[str, bool]:
     # get all jobs for this pipeline to remove from memory
     jobs = await storage.list_jobs(pipeline_id=pipeline_id, limit=1000)
@@ -421,13 +550,13 @@ async def delete_pipeline(pipeline_id: int) -> dict[str, bool]:
     return {"success": True}
 
 
-@app.get("/templates")
+@api_router.get("/templates")
 async def list_templates() -> list[dict[str, Any]]:
     """List all available pipeline templates"""
     return template_registry.list_templates()
 
 
-@app.post("/pipelines/from_template/{template_id}")
+@api_router.post("/pipelines/from_template/{template_id}")
 async def create_pipeline_from_template(template_id: str) -> dict[str, Any]:
     """Create a new pipeline from a template"""
     template = template_registry.get_template(template_id)
@@ -442,8 +571,8 @@ async def create_pipeline_from_template(template_id: str) -> dict[str, Any]:
     return {"id": pipeline_id, "name": pipeline_name, "template_id": template_id}
 
 
-# mount api routes
-app.mount("/api", app)
+# include api router with /api prefix
+app.include_router(api_router, prefix="/api")
 
 # serve frontend (built react app)
 frontend_dir = Path("frontend/build")

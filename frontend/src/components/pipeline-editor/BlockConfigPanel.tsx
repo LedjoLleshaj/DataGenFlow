@@ -11,7 +11,7 @@ import {
   Select,
   Tooltip,
 } from "@primer/react";
-import { XIcon, StarFillIcon } from "@primer/octicons-react";
+import { XIcon, StarFillIcon, KeyAsteriskIcon } from "@primer/octicons-react";
 import { Node } from "reactflow";
 import Editor from "@monaco-editor/react";
 
@@ -308,7 +308,12 @@ export default function BlockConfigPanel({
           mb: 3,
         }}
       >
-        <Heading sx={{ fontSize: 2, color: "fg.default" }}>Configure</Heading>
+        <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+          <Box sx={{ color: "fg.default" }}>
+            <KeyAsteriskIcon />
+          </Box>
+          <Heading sx={{ fontSize: 2, color: "fg.default" }}>{block.name}</Heading>
+        </Box>
         <Button onClick={onClose} variant="invisible" sx={{ p: 1, minWidth: "auto" }}>
           <XIcon />
         </Button>
@@ -316,9 +321,6 @@ export default function BlockConfigPanel({
 
       {/* Block name */}
       <Box sx={{ mb: 3 }}>
-        <Text sx={{ fontWeight: "bold", display: "block", mb: 2, color: "fg.default" }}>
-          {block.name}
-        </Text>
         {block.description && (
           <Text sx={{ fontSize: 0, color: "fg.muted" }}>{block.description}</Text>
         )}
