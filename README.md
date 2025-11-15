@@ -47,7 +47,7 @@ make run-dev
 # Open http://localhost:8000
 ```
 
-**That's it!** No complex configuration, no external dependencies required.
+**That's it!** No complex configuration, no external services required beyond your LLM endpoint.
 
 ## How It Works
 
@@ -154,7 +154,7 @@ Start with ready-to-use blocks:
 - Rouge Score: Calculate ROUGE similarity scores
 
 **Seeders:**
-- Markdown Multiplier: Split markdown documents into chunks for processing
+- Markdown Chunker: Split markdown documents into chunks for processing
 
 #### Extend with Custom Blocks
 
@@ -191,7 +191,7 @@ Why this matters:
 
 **Debugging Custom Blocks**
 
-Need to debug your custom block? Use the included `debug_pipeline.py` script with VS Code debugger. See [Developer Documentation](DEVELOPERS.md#debugging-custom-blocks) for details.
+Need to debug your custom block? Use the included `debug_pipeline.py` script with VS Code debugger. See [Developer Documentation](DEVELOPERS#debugging-custom-blocks) for details.
 
 📚 Complete guide: [Custom Block Development](docs/how_to_create_blocks.md)
 

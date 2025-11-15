@@ -1,6 +1,11 @@
+---
+title: Markdown Style Guide
+description: Guidelines for writing markdown documentation for DataGenFlow
+---
+
 # Markdown Style Guide
 
-This guide defines the markdown formatting standards for DataGenFlow documentation to ensure consistent rendering on the website.
+This guide defines the markdown formatting standards for DataGenFlow documentation to ensure consistent rendering.
 
 ## Table of Contents
 - [Document Structure](#document-structure)
@@ -16,21 +21,30 @@ This guide defines the markdown formatting standards for DataGenFlow documentati
 
 ## Document Structure
 
-### Frontmatter (Optional)
+### Frontmatter
 
-Add YAML frontmatter at the top of the document for metadata:
+Add YAML frontmatter at the top of the document for metadata, followed by an H1 title:
 
-```yaml
+```markdown
 ---
 title: Your Page Title
 description: Brief description of the page
 ---
+
+# Your Page Title
+
+Your introduction paragraph here...
+
+## Table of Contents
+...
 ```
+
+**Important:** Both frontmatter AND H1 title are required. The H1 should match the frontmatter title exactly.
 
 ### Page Organization
 
-1. **H1 Title**: One per document (auto-rendered from frontmatter or filename)
-2. **Table of Contents**: For all docs except README.md (place after intro paragraph)
+1. **H1 Title**: One per document (must match frontmatter title)
+2. **Table of Contents**: For all docs except README.md (place after H1 and intro paragraph)
 3. **H2 Sections**: Major topics
 4. **H3 Subsections**: Subtopics within sections
 5. **H4 and below**: Use sparingly for deep nesting
@@ -278,7 +292,7 @@ Images in `/images/` directory:
 
 ## Code Copy Feature
 
-All code blocks on the website automatically include a "Copy" button in the top-right corner. Users can click this button to copy the entire code block to their clipboard.
+All code blocks in the documentation automatically include a "Copy" button in the top-right corner. Users can click this button to copy the entire code block to their clipboard.
 
 **This happens automatically** - you don't need to add anything special to your markdown. Just use proper code blocks with language specification:
 
@@ -304,19 +318,18 @@ Before publishing documentation:
 - [ ] Admonitions use **Note:**/**Warning:**/**Tip:** prefix
 - [ ] External links open in new tab (automatic)
 - [ ] Images use correct paths (/images/... for repo images)
-- [ ] No H1 in content (title auto-rendered from frontmatter/filename)
+- [ ] H1 title matches frontmatter title (both required)
 - [ ] Headings follow logical hierarchy (H2 → H3 → H4, no skipping)
 
 ## Testing Your Markdown
 
-1. Run the development server: `cd website && yarn dev`
-2. Navigate to your documentation page
-3. Verify:
-   - Table of contents links work
-   - Code blocks render with syntax highlighting
-   - Admonitions are styled correctly
-   - Images load properly
-   - All links work (internal and external)
+1. Review your markdown file locally
+2. Verify:
+   - Table of contents links use correct anchor format
+   - Code blocks have language identifiers
+   - Admonitions use proper format (`> **Note:**`)
+   - Internal links omit `.md` extension
+   - Headings follow logical hierarchy
 
 ---
 

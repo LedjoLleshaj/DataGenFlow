@@ -1,6 +1,6 @@
 import { useState, createContext, useContext } from "react";
 import { BrowserRouter, Routes, Route, Link, useLocation } from "react-router-dom";
-import { Box, IconButton, ThemeProvider, useTheme, Heading, Text } from "@primer/react";
+import { Box, IconButton, ThemeProvider, useTheme, Text } from "@primer/react";
 import {
   SunIcon,
   MoonIcon,
@@ -17,6 +17,7 @@ import GlobalJobIndicator from "./components/GlobalJobIndicator";
 import { JobProvider } from "./contexts/JobContext";
 import { useTheme as shadcnUseTheme, ThemeProvider as ShadcnThemeProvider } from "next-themes";
 import { Toaster } from "./components/ui/sonner";
+import { usePersistedState } from "./hooks/usePersistedState";
 
 // context to control navigation visibility
 const NavigationContext = createContext<{
@@ -47,7 +48,6 @@ function Navigation() {
     const newMode = isDark ? "light" : "dark";
     setColorMode(newMode);
     setTheme(newMode);
-    localStorage.setItem("colorMode", newMode);
   };
 
   return (
@@ -69,13 +69,8 @@ function Navigation() {
         >
           {/* brand */}
           <Box sx={{ p: 4, borderBottom: "1px solid", borderColor: "border.default" }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
-              <img
-                src="/logo.png"
-                alt="DataGenFlow Logo"
-                style={{ width: "40px", height: "40px" }}
-              />
-              <Heading sx={{ fontSize: 3, color: "fg.default" }}>DataGenFlow</Heading>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2, minHeight: 40 }}>
+              <img src="/logo.svg" alt="DataGenFlow Logo" />
             </Box>
             <GlobalJobIndicator />
           </Box>
@@ -150,15 +145,7 @@ function Navigation() {
 }
 
 export default function App() {
-  const [colorMode] = useState<"light" | "dark" | "auto">(() => {
-    // read from localStorage or default to light
-    const stored = localStorage.getItem("colorMode");
-    if (stored === "dark" || stored === "light" || stored === "auto") {
-      return stored;
-    }
-    return "light";
-  });
-
+  const [colorMode] = usePersistedState<"light" | "dark" | "auto">("colorMode", "light");
   const [hideNavigation, setHideNavigation] = useState(false);
 
   // @todo: remove primer in favor of shadcn themes

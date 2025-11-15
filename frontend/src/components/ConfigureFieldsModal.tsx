@@ -30,11 +30,17 @@ export default function ConfigureFieldsModal({
     try {
       // load available fields schema
       const schemaRes = await fetch(`/api/pipelines/${pipelineId}/accumulated_state_schema`);
+      if (!schemaRes.ok) {
+        throw new Error(`http ${schemaRes.status}`);
+      }
       const schemaData = await schemaRes.json();
       const fields = schemaData.fields || [];
 
       // load existing validation_config from pipeline
       const pipelineRes = await fetch(`/api/pipelines/${pipelineId}`);
+      if (!pipelineRes.ok) {
+        throw new Error(`http ${pipelineRes.status}`);
+      }
       const pipelineData = await pipelineRes.json();
 
       if (pipelineData.validation_config?.field_order) {
@@ -52,8 +58,10 @@ export default function ConfigureFieldsModal({
       }
 
       setLoading(false);
-    } catch {
-      toast.error("Failed to load available fields");
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error";
+      console.error("failed to load available fields:", err);
+      toast.error(`Failed to load field configuration: ${message}`);
       setLoading(false);
     }
   };
@@ -185,7 +193,9 @@ export default function ConfigureFieldsModal({
 
       onSave();
     } catch (err) {
-      toast.error(`Error saving configuration: ${err}`);
+      const message = err instanceof Error ? err.message : "Unknown error";
+      console.error("failed to save field configuration:", err);
+      toast.error(`Failed to save field configuration: ${message}`);
     }
   };
 

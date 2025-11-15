@@ -1,3 +1,8 @@
+---
+title: Overview
+description: Transform complex data generation workflows into intuitive visual pipelines
+---
+
 # Overview
 
 DataGenFlow transforms complex data generation workflows into intuitive visual pipelines. A minimal tool designed to help you generate, validate, and export quality data with full transparency.
@@ -44,7 +49,7 @@ make run-dev
 # Open http://localhost:8000
 ```
 
-That's it! No complex configuration or external dependencies required.
+That's it! No complex configuration or external services required beyond your LLM endpoint.
 
 > **Note:** DataGenFlow works with any OpenAI-compatible LLM endpoint (Ollama, OpenAI, etc.). Configure your endpoint in `.env` file.
 
@@ -74,7 +79,7 @@ A **pipeline** is a sequence of blocks that process data. Think of it as a visua
 - **RougeScore**: Calculate ROUGE similarity between texts
 - **DiversityScore**: Measure lexical diversity
 - **CoherenceScore**: Calculate coherence metrics
-- **MarkdownMultiplierBlock**: Split markdown into processable chunks
+- **Markdown Chunker**: Split markdown into processable chunks
 
 **Custom blocks:** Create your own in minutes - just inherit from `BaseBlock` and implement `execute()`.
 

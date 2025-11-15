@@ -1,4 +1,21 @@
+---
+title: Q&A Generation Template
+description: Generate question-answer pairs from content
+---
+
 # Q&A Generation Template
+
+## Table of Contents
+- [Overview](#overview)
+- [Pipeline Architecture](#pipeline-architecture)
+- [Seed Format](#seed-format)
+- [Output Format](#output-format)
+- [Use Cases](#use-cases)
+- [Markdown File Upload Feature](#markdown-file-upload-feature)
+- [Customization](#customization)
+- [Example Workflow](#example-workflow)
+- [Performance Tips](#performance-tips)
+- [Related Documentation](#related-documentation)
 
 ## Overview
 
@@ -12,10 +29,16 @@ This template converts markdown documentation into question-answer pairs. It aut
 ## Pipeline Architecture
 
 ```
-┌──────────────┐   ┌──────────────┐   ┌──────────────┐   ┌──────────────┐
-│   Markdown   │──►│     Text     │──►│  Structured  │──►│     JSON     │
-│  Multiplier  │   │  Generator   │   │  Generator   │   │  Validator   │
-└──────────────┘   └──────────────┘   └──────────────┘   └──────────────┘
+┌──────────────┐   ┌──────────────┐   
+│   Markdown   │──►│     Text     │──►
+│  Multiplier  │   │  Generator   │   
+└──────────────┘   └──────────────┘   
+
+┌──────────────┐   ┌──────────────┐
+│  Structured  │──►│     JSON     │
+│  Generator   │   │  Validator   │
+└──────────────┘   └──────────────┘
+
 
 Input: file_content
   ↓
