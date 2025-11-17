@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2025-11-17 🚀
+
+### Added
+- Model/Embed UI: Ability to create, set up, and test various models and embeddings directly in the application
+- New 'Seeders' block type for directly loading and chunking content from Markdown files
+- Q&A generation template for direct generation of Q&A pairs from Markdown files
+- Docker support: Application is now fully runnable on Docker for simplified setup and deployment
+- Model selection directly in blocks (pulled from configuration)
+- Validation of seeds before running a pipeline
+
+### Changed
+- Enhanced block configuration interface with integrated model and embedding selection capabilities
+- Official website moved from GitHub Pages to datagenflow.com with improved documentation and guides
+
+### Fixed
+- Pipeline status and error alignment improvements
+- Various bugs and stability improvements
+
 ## [1.1.0] - 2025-10-29 🚀
 
 ### Added
@@ -31,5 +49,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - REST API for pipeline execution
 - Template system for common use cases
 
+[1.2.0]: https://github.com/nicofretti/DataGenFlow/compare/release-v1.1.0...release-v1.2.0
 [1.1.0]: https://github.com/nicofretti/DataGenFlow/compare/release...release-v1.1.0
 [1.0.0]: https://github.com/nicofretti/DataGenFlow/releases/tag/release
