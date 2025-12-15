@@ -12,7 +12,15 @@ import {
   Label,
   Tooltip,
 } from "@primer/react";
-import { PlayIcon, XIcon, UploadIcon, ClockIcon, SparklesFillIcon } from "@primer/octicons-react";
+import {
+  PlayIcon,
+  XIcon,
+  UploadIcon,
+  ClockIcon,
+  SparklesFillIcon,
+  CheckCircleIcon,
+  XCircleIcon,
+} from "@primer/octicons-react";
 import { useJob } from "../contexts/JobContext";
 import type { Pipeline } from "../types";
 import { getElapsedTime } from "../utils/format";
@@ -509,6 +517,95 @@ export default function Generator() {
               {currentJob.error}
             </Flash>
           )}
+
+          {/* langfuse metadata display */}
+          {currentJob.metadata &&
+            (() => {
+              try {
+                const metadata =
+                  typeof currentJob.metadata === "string"
+                    ? JSON.parse(currentJob.metadata)
+                    : currentJob.metadata;
+                if (metadata.langfuse) {
+                  if (metadata.langfuse.error) {
+                    return (
+                      <Box
+                        sx={{
+                          mb: 2,
+                          p: 3,
+                          border: "2px solid",
+                          borderColor: "danger.emphasis",
+                          borderRadius: 2,
+                          bg: "danger.subtle",
+                        }}
+                      >
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
+                          <XCircleIcon size={20} fill="danger.fg" />
+                          <Text sx={{ fontSize: 2, fontWeight: "semibold", color: "danger.fg" }}>
+                            Langfuse Upload Failed
+                          </Text>
+                        </Box>
+                        <Text sx={{ fontSize: 1, color: "fg.default" }}>
+                          {metadata.langfuse.error}
+                        </Text>
+                      </Box>
+                    );
+                  } else if (metadata.langfuse.message) {
+                    return (
+                      <Box
+                        sx={{
+                          mb: 2,
+                          p: 3,
+                          border: "2px solid",
+                          borderColor: "success.emphasis",
+                          borderRadius: 2,
+                          bg: "success.subtle",
+                        }}
+                      >
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
+                          <CheckCircleIcon size={20} fill="success.fg" />
+                          <Text sx={{ fontSize: 2, fontWeight: "semibold", color: "success.fg" }}>
+                            Langfuse Dataset Upload Successful
+                          </Text>
+                        </Box>
+                        <Text sx={{ fontSize: 1, color: "fg.default", mb: 2 }}>
+                          {metadata.langfuse.message}
+                        </Text>
+                        {metadata.langfuse.dataset_name && (
+                          <Box
+                            sx={{
+                              mt: 2,
+                              p: 2,
+                              bg: "canvas.default",
+                              borderRadius: 1,
+                              border: "1px solid",
+                              borderColor: "border.default",
+                            }}
+                          >
+                            <Text sx={{ fontSize: 0, color: "fg.muted", mb: 1, display: "block" }}>
+                              Dataset Name:
+                            </Text>
+                            <Text
+                              sx={{
+                                fontSize: 1,
+                                fontFamily: "mono",
+                                color: "success.fg",
+                                fontWeight: "semibold",
+                              }}
+                            >
+                              {metadata.langfuse.dataset_name}
+                            </Text>
+                          </Box>
+                        )}
+                      </Box>
+                    );
+                  }
+                }
+                return null;
+              } catch {
+                return null;
+              }
+            })()}
 
           <Box sx={{ display: "flex", gap: 2 }}>
             {currentJob.status === "running" && (
