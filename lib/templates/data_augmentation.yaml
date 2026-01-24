@@ -1,0 +1,21 @@
+name: Data Augmentation
+description: Generate synthetic records preserving statistical distributions from sample data
+blocks:
+  - type: StructureSampler
+    config:
+      target_count: "{{ target_count }}"
+      categorical_fields: "{{ categorical_fields | tojson }}"
+      numeric_fields: "{{ numeric_fields | tojson }}"
+      dependencies: "{{ dependencies | tojson }}"
+      seed: 42
+
+  - type: SemanticInfiller
+    config:
+      fields_to_generate: "{{ fields_to_generate | tojson }}"
+      temperature: 0.8
+      max_tokens: 200
+
+  - type: DuplicateRemover
+    config:
+      similarity_threshold: 0.85
+      comparison_fields: "{{ comparison_fields | tojson }}"

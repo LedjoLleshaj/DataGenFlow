@@ -19,7 +19,9 @@ data/*.db-journal
 # ide
 .vscode/
 .idea/
-.claude/
+.claude/*
+!.claude/skills/
+!.claude/skills/**
 .worktrees/
 
 # cache
@@ -44,4 +46,3 @@ REVIEW.md
 *storybook.log
 storybook-static
 release.tag.md
-Q

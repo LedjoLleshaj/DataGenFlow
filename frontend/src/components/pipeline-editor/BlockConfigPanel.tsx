@@ -32,9 +32,12 @@ export default function BlockConfigPanel({
   const [formData, setFormData] = useState<Record<string, any>>(config || {});
   const { resolvedColorScheme } = useTheme();
   const [wordWrap, setWordWrap] = useState(false);
+  const [jsonMode, setJsonMode] = useState<Record<string, boolean>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [panelWidth, setPanelWidth] = useState(400);
   const [isResizing, setIsResizing] = useState(false);
+  const [llmModels, setLlmModels] = useState<string[]>([]);
+  const [embeddingModels, setEmbeddingModels] = useState<string[]>([]);
 
   // sync formData with parent config changes
   // this ensures that saved config persists when panel is reopened
@@ -64,6 +67,10 @@ export default function BlockConfigPanel({
       prevConfigRef.current = config;
       setFormData(config || {});
       setErrors({});
+      // reset json mode when switching nodes to avoid state bleeding
+      if (nodeChanged) {
+        setJsonMode({});
+      }
     }
   }, [node.id, config]);
 
@@ -73,6 +80,42 @@ export default function BlockConfigPanel({
       prevNodeIdRef.current = null;
       prevConfigRef.current = null;
     };
+  }, []);
+
+  // fetch available LLM and embedding models
+  useEffect(() => {
+    const controller = new AbortController();
+    const { signal } = controller;
+
+    const fetchModels = async () => {
+      try {
+        const [llmResponse, embeddingResponse] = await Promise.all([
+          fetch("/api/llm-models", { signal }),
+          fetch("/api/embedding-models", { signal }),
+        ]);
+
+        if (llmResponse.ok) {
+          const llmData = await llmResponse.json();
+          if (Array.isArray(llmData)) {
+            setLlmModels(llmData.map((m: any) => m.name).filter(Boolean));
+          }
+        }
+
+        if (embeddingResponse.ok) {
+          const embeddingData = await embeddingResponse.json();
+          if (Array.isArray(embeddingData)) {
+            setEmbeddingModels(embeddingData.map((m: any) => m.name).filter(Boolean));
+          }
+        }
+      } catch (error) {
+        if ((error as any)?.name !== "AbortError") {
+          console.error("Failed to fetch models:", error);
+        }
+      }
+    };
+
+    fetchModels();
+    return () => controller.abort();
   }, []);
 
   // handle resize
@@ -115,6 +158,20 @@ export default function BlockConfigPanel({
 
     Object.entries(schema).forEach(([key, fieldSchema]: [string, any]) => {
       const value = processedData[key];
+
+      // json-or-template fields: validate JSON when in JSON mode
+      if (fieldSchema.format === "json-or-template") {
+        if (jsonMode[key] && typeof value === "string" && value.trim()) {
+          try {
+            JSON.parse(value);
+          } catch (e) {
+            validationErrors[key] =
+              `Invalid JSON: ${e instanceof Error ? e.message : "parse error"}`;
+          }
+        }
+        return;
+      }
+
       if (
         (fieldSchema.type === "array" || fieldSchema.type === "object") &&
         typeof value === "string"
@@ -137,7 +194,7 @@ export default function BlockConfigPanel({
     setErrors({});
     onUpdate(node.id, processedData);
     onClose();
-  }, [node.id, formData, onUpdate, onClose, block.config_schema]);
+  }, [node.id, formData, onUpdate, onClose, block.config_schema, jsonMode]);
 
   const renderField = (key: string, schema: any) => {
     const value = formData[key] ?? schema.default ?? "";
@@ -200,6 +257,54 @@ export default function BlockConfigPanel({
           {schema.enum.map((option: string) => (
             <Select.Option key={option} value={option}>
               {option}
+            </Select.Option>
+          ))}
+        </Select>
+      );
+    }
+
+    // llm model dropdown
+    if (key === "model" && llmModels.length > 0) {
+      const currentValue = typeof value === "string" ? value : "";
+      // preserve custom model names not returned by API
+      const modelOptions =
+        currentValue && !llmModels.includes(currentValue)
+          ? [currentValue, ...llmModels]
+          : llmModels;
+      return (
+        <Select
+          value={currentValue}
+          onChange={(e) => handleChange(key, e.target.value || null)}
+          sx={{ width: "100%" }}
+        >
+          <Select.Option value="">-- Use default model --</Select.Option>
+          {modelOptions.map((modelName: string) => (
+            <Select.Option key={modelName} value={modelName}>
+              {modelName}
+            </Select.Option>
+          ))}
+        </Select>
+      );
+    }
+
+    // embedding model dropdown
+    if (key === "embedding_model" && embeddingModels.length > 0) {
+      const currentValue = typeof value === "string" ? value : "";
+      // preserve custom model names not returned by API
+      const modelOptions =
+        currentValue && !embeddingModels.includes(currentValue)
+          ? [currentValue, ...embeddingModels]
+          : embeddingModels;
+      return (
+        <Select
+          value={currentValue}
+          onChange={(e) => handleChange(key, e.target.value || null)}
+          sx={{ width: "100%" }}
+        >
+          <Select.Option value="">-- Use default model --</Select.Option>
+          {modelOptions.map((modelName: string) => (
+            <Select.Option key={modelName} value={modelName}>
+              {modelName}
             </Select.Option>
           ))}
         </Select>
@@ -305,6 +410,80 @@ export default function BlockConfigPanel({
               padding: { top: 8, bottom: 8 },
             }}
           />
+        </Box>
+      );
+    }
+
+    // json-or-template field - use monaco editor with toggle
+    if (schema.format === "json-or-template") {
+      const isJsonMode = jsonMode[key] ?? true; // default to JSON mode
+      const jsonValue = typeof value === "string" ? value : JSON.stringify(value, null, 2);
+
+      return (
+        <Box>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
+            <Checkbox
+              checked={isJsonMode}
+              onChange={(e) => setJsonMode((prev) => ({ ...prev, [key]: e.target.checked }))}
+              id={`jsonmode-${key}`}
+              sx={{ m: 0 }}
+            />
+            <Text
+              as="label"
+              htmlFor={`jsonmode-${key}`}
+              sx={{ fontSize: 0, color: "fg.muted", cursor: "pointer" }}
+            >
+              JSON mode
+            </Text>
+            <Text sx={{ fontSize: 0, color: "fg.muted" }}>
+              {isJsonMode ? "(JSON syntax)" : "(Jinja2 template)"}
+            </Text>
+          </Box>
+          <Box
+            sx={{
+              border: "1px solid",
+              borderColor: "border.default",
+              borderRadius: 2,
+              overflow: "hidden",
+            }}
+          >
+            <Editor
+              key={`${node.id}-${key}-${isJsonMode}`}
+              height="200px"
+              language={isJsonMode ? "json" : "python"}
+              value={jsonValue}
+              onChange={(newValue) => {
+                // keep as string during editing, will be parsed on save if needed
+                handleChange(key, newValue || "");
+              }}
+              theme={resolvedColorScheme === "dark" ? "vs-dark" : "light"}
+              options={{
+                minimap: { enabled: false },
+                scrollbar: {
+                  vertical: "auto",
+                  horizontal: "auto",
+                  verticalScrollbarSize: 10,
+                  horizontalScrollbarSize: 10,
+                },
+                lineNumbers: "on",
+                lineNumbersMinChars: 3,
+                glyphMargin: false,
+                folding: true,
+                lineDecorationsWidth: 5,
+                scrollBeyondLastLine: false,
+                renderLineHighlight: "none",
+                overviewRulerLanes: 0,
+                hideCursorInOverviewRuler: true,
+                overviewRulerBorder: false,
+                wordWrap: wordWrap ? "on" : "off",
+                fontSize: 13,
+                fontFamily:
+                  "ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace",
+                tabSize: 2,
+                padding: { top: 8, bottom: 8 },
+              }}
+            />
+          </Box>
         </Box>
       );
     }

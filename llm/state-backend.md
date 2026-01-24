@@ -11,10 +11,11 @@ fastapi + aiosqlite + pydantic + jinja2 + pyyaml + litellm + rouge-score
 ```
 lib/
   blocks/
-    builtin/              # 11 blocks: text_generator, structured_generator, validator,
-                          # json_validator, diversity_score, coherence_score,
-                          # rouge_score, markdown_multiplier, langfuse,
-                          # field_mapper, ragas_metrics
+    builtin/              # 14 blocks: text_generator, structured_generator,
+                          # semantic_infiller, validator, json_validator,
+                          # duplicate_remover, diversity_score, coherence_score,
+                          # rouge_score, markdown_multiplier, structure_sampler,
+                          # langfuse, field_mapper, ragas_metrics
     commons/              # shared utilities (usage_tracker)
     custom/               # user experimental blocks
     base.py               # BaseBlock interface
@@ -378,7 +379,7 @@ from lib.entities.block_execution_context import BlockExecutionContext
 class BaseBlock:
     name: str
     description: str
-    category: str  # generators, validators, metrics, seeders, general
+    category: str  # generators, validators, metrics, seeders, multipliers, observability, utilities
     inputs: list[str]
     outputs: list[str]
 
@@ -386,6 +387,7 @@ class BaseBlock:
     _config_enums: dict[str, list[str]]      # enum dropdown options
     _field_references: list[str]              # field reference dropdowns
     _config_descriptions: dict[str, str]      # inline help text
+    _config_formats: dict[str, str]           # json schema format hints
 
     async def execute(context: BlockExecutionContext) -> dict:
         # receives typed execution context instead of plain dict
@@ -412,30 +414,51 @@ class BaseBlock:
 - `_config_enums` → enum arrays in schema
 - `_field_references` → isFieldReference: true in schema
 - `_config_descriptions` → description fields in schema
+- `_config_formats` → format field in schema (e.g., "json-or-template" for hybrid json/jinja editors)
 
 ### builtin blocks
+- **StructureSampler**: statistical sampler (target_count, categorical_fields, numeric_fields, dependencies, seed)
+  - outputs: skeletons, _seed_samples
+  - category: seeders
 - **TextGenerator**: text via litellm (system_prompt, user_prompt, model, temperature, max_tokens)
   - outputs: assistant, system, user
+  - category: generators
 - **StructuredGenerator**: json via litellm (json_schema, user_prompt, model, temperature, max_tokens)
   - outputs: generated
+  - category: generators
+- **SemanticInfiller**: complete skeletons with llm (fields_to_generate, model, temperature, max_tokens)
+  - outputs: samples
+  - category: generators
 - **MarkdownMultiplierBlock**: split markdown into chunks (is_multiplier: true, must be first)
   - outputs: content (per chunk)
+  - category: multipliers
 - **ValidatorBlock**: validate text (min_length, max_length, forbidden_words)
   - outputs: text, valid, assistant
+  - category: validators
 - **JSONValidatorBlock**: parse json from field (field_name, required_fields, strict)
   - outputs: valid, parsed_json
+  - category: validators
+- **DuplicateRemover**: embedding-based similarity check (similarity_threshold, comparison_fields, embedding_model)
+  - outputs: generated_samples (enriched with is_duplicate, similarity_to_seeds, similarity_to_generated)
+  - category: validators
 - **DiversityScore**: lexical diversity (field_name)
   - outputs: diversity_score
+  - category: metrics
 - **CoherenceScore**: text coherence (field_name)
   - outputs: coherence_score
+  - category: metrics
 - **RougeScore**: rouge comparison (generated_field, reference_field, rouge_type)
   - outputs: rouge_score
+  - category: metrics
 - **LangfuseBlock**: observability logging (public_key, secret_key, host, session_id)
   - outputs: langfuse_trace_url
+  - category: observability
 - **FieldMapper**: create fields from Jinja2 expressions (mappings)
   - outputs: dynamic (keys from mappings config)
+  - category: utilities
 - **RagasMetrics**: evaluate QA using RAGAS metrics (question_field, answer_field, etc.)
   - outputs: ragas_scores
+  - category: metrics
 
 ### block discovery
 - registry scans: lib/blocks/builtin/, lib/blocks/custom/, user_blocks/

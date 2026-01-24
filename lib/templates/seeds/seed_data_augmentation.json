@@ -1,0 +1,19 @@
+[
+  {
+    "repetitions": 1,
+    "metadata": {
+      "samples": [
+        {"category": "electronics", "price": 299, "description": "Wireless noise-canceling headphones with premium sound quality"},
+        {"category": "electronics", "price": 899, "description": "13-inch laptop with high-resolution display"},
+        {"category": "furniture", "price": 199, "description": "Ergonomic office chair with lumbar support"},
+        {"category": "furniture", "price": 349, "description": "Adjustable standing desk with memory presets"}
+      ],
+      "target_count": 10,
+      "categorical_fields": ["category"],
+      "numeric_fields": ["price"],
+      "dependencies": {},
+      "fields_to_generate": ["description", "price"],
+      "comparison_fields": ["description"]
+    }
+  }
+]

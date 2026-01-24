@@ -61,12 +61,41 @@ function getPreviewFields(blockType: string, config: Record<string, any>): Array
   // priority fields based on block type
   let priorityKeys: string[] = [];
 
-  if (type.includes("generator")) {
+  // data augmentation blocks
+  if (type.includes("sampler")) {
+    priorityKeys = ["target_count", "categorical_fields"];
+  } else if (type.includes("infiller")) {
+    priorityKeys = ["fields_to_generate", "model", "temperature"];
+  } else if (type.includes("remover")) {
+    priorityKeys = ["similarity_threshold", "comparison_fields", "embedding_model"];
+  }
+  // multiplier blocks
+  else if (type.includes("multiplier")) {
+    priorityKeys = ["parser_type", "chunk_size"];
+  }
+  // langfuse integration
+  else if (type.includes("langfuse")) {
+    priorityKeys = ["dataset_name"];
+  }
+  // field mapper
+  else if (type.includes("mapper")) {
+    priorityKeys = ["mappings"];
+  }
+  // ragas metrics
+  else if (type.includes("ragas")) {
+    priorityKeys = ["metrics", "model", "score_threshold"];
+  }
+  // generators (text/structured)
+  else if (type.includes("generator")) {
     priorityKeys = ["model", "temperature", "max_tokens"];
-  } else if (type.includes("validator")) {
-    priorityKeys = ["min_length", "max_length", "required_fields"];
-  } else if (type.includes("score")) {
-    priorityKeys = ["generated_field", "reference_field", "metric"];
+  }
+  // validators
+  else if (type.includes("validator")) {
+    priorityKeys = ["min_length", "max_length", "required_fields", "field_name"];
+  }
+  // score blocks
+  else if (type.includes("score")) {
+    priorityKeys = ["generated_field", "reference_field", "field_name", "metric"];
   }
 
   // find up to 2 configured values from priority keys
@@ -76,9 +105,27 @@ function getPreviewFields(blockType: string, config: Record<string, any>): Array
     if (config[key] !== undefined && config[key] !== null && config[key] !== "") {
       let displayValue = String(config[key]);
 
+      // special handling for fields_to_generate (JSON string)
+      if (key === "fields_to_generate" && typeof config[key] === "string") {
+        try {
+          const parsed = JSON.parse(config[key]);
+          if (Array.isArray(parsed)) {
+            displayValue = `[${parsed.length} items]`;
+          }
+        } catch {
+          // if not valid JSON, treat as template string
+        }
+      }
+      // special formatting for arrays/objects
+      else if (Array.isArray(config[key])) {
+        displayValue = `[${config[key].length} items]`;
+      } else if (typeof config[key] === "object") {
+        displayValue = `{${Object.keys(config[key]).length} keys}`;
+      }
+
       // truncate long values
-      if (displayValue.length > 20) {
-        displayValue = displayValue.slice(0, 20) + "...";
+      if (displayValue.length > 25) {
+        displayValue = displayValue.slice(0, 25) + "...";
       }
 
       preview.push([key, displayValue]);
