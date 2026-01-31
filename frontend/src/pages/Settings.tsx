@@ -251,7 +251,9 @@ export default function Settings() {
                     },
                   }}
                 >
-                  <Box sx={{ display: "flex", alignItems: "start", justifyContent: "space-between" }}>
+                  <Box
+                    sx={{ display: "flex", alignItems: "start", justifyContent: "space-between" }}
+                  >
                     <Box sx={{ flex: 1 }}>
                       <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1 }}>
                         <Text sx={{ fontWeight: "bold", fontSize: 2, color: "fg.default" }}>
@@ -300,7 +302,10 @@ export default function Settings() {
                       </Box>
                     </Box>
 
-                    <Box sx={{ display: "flex", gap: 2 }} onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+                    <Box
+                      sx={{ display: "flex", gap: 2 }}
+                      onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                    >
                       <Button
                         size="small"
                         variant="default"
@@ -409,7 +414,9 @@ export default function Settings() {
                     },
                   }}
                 >
-                  <Box sx={{ display: "flex", alignItems: "start", justifyContent: "space-between" }}>
+                  <Box
+                    sx={{ display: "flex", alignItems: "start", justifyContent: "space-between" }}
+                  >
                     <Box sx={{ flex: 1, display: "flex", flexDirection: "column" }}>
                       <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1 }}>
                         <Text sx={{ fontWeight: "bold", fontSize: 2, color: "fg.default" }}>
@@ -457,7 +464,10 @@ export default function Settings() {
                       </Text>
                     </Box>
 
-                    <Box sx={{ display: "flex", gap: 2 }} onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+                    <Box
+                      sx={{ display: "flex", gap: 2 }}
+                      onClick={(e: React.MouseEvent) => e.stopPropagation()}
+                    >
                       <Button
                         size="small"
                         variant="default"
