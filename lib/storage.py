@@ -192,6 +192,24 @@ class Storage:
         if "metadata" not in job_column_names:
             await db.execute("ALTER TABLE jobs ADD COLUMN metadata TEXT")
 
+        # migrate llm_models table
+        cursor = await db.execute("PRAGMA table_info(llm_models)")
+        llm_columns = await cursor.fetchall()
+        llm_column_names = [col[1] for col in llm_columns]
+
+        if "is_default" not in llm_column_names:
+            await db.execute("ALTER TABLE llm_models ADD COLUMN is_default BOOLEAN DEFAULT 0")
+
+        # migrate embedding_models table
+        cursor = await db.execute("PRAGMA table_info(embedding_models)")
+        embedding_columns = await cursor.fetchall()
+        embedding_column_names = [col[1] for col in embedding_columns]
+
+        if "is_default" not in embedding_column_names:
+            await db.execute(
+                "ALTER TABLE embedding_models ADD COLUMN is_default BOOLEAN DEFAULT 0"
+            )
+
     async def _migrate_env_to_db(self, db: Connection) -> None:
         """migrate .env config to database if no models configured"""
         # check if any llm models exist
@@ -214,8 +232,8 @@ class Storage:
             # create default model from .env
             await db.execute(
                 """
-                INSERT INTO llm_models (name, provider, endpoint, api_key, model_name)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO llm_models (name, provider, endpoint, api_key, model_name, is_default)
+                VALUES (?, ?, ?, ?, ?, ?)
                 """,
                 (
                     "default",
@@ -223,6 +241,7 @@ class Storage:
                     settings.LLM_ENDPOINT,
                     settings.LLM_API_KEY if settings.LLM_API_KEY else None,
                     settings.LLM_MODEL,
+                    True,  # make env model default if it's the only one
                 ),
             )
 
@@ -622,6 +641,7 @@ class Storage:
                     endpoint=row["endpoint"],
                     api_key=row["api_key"],
                     model_name=row["model_name"],
+                    is_default=bool(row["is_default"]),
                 )
                 for row in rows
             ]
@@ -643,6 +663,7 @@ class Storage:
                 endpoint=row["endpoint"],
                 api_key=row["api_key"],
                 model_name=row["model_name"],
+                is_default=bool(row["is_default"]),
             )
 
         return await self._execute_with_connection(_get)
@@ -653,13 +674,14 @@ class Storage:
         async def _save(db: Connection) -> None:
             await db.execute(
                 """
-                INSERT INTO llm_models (name, provider, endpoint, api_key, model_name)
-                VALUES (?, ?, ?, ?, ?)
+                INSERT INTO llm_models (name, provider, endpoint, api_key, model_name, is_default)
+                VALUES (?, ?, ?, ?, ?, ?)
                 ON CONFLICT(name) DO UPDATE SET
                     provider = excluded.provider,
                     endpoint = excluded.endpoint,
                     api_key = excluded.api_key,
-                    model_name = excluded.model_name
+                    model_name = excluded.model_name,
+                    is_default = excluded.is_default
                 """,
                 (
                     config.name,
@@ -667,6 +689,7 @@ class Storage:
                     config.endpoint,
                     config.api_key,
                     config.model_name,
+                    config.is_default,
                 ),
             )
 
@@ -680,6 +703,29 @@ class Storage:
             return cursor.rowcount > 0
 
         return await self._execute_with_connection(_delete)
+
+    async def set_default_llm_model(self, name: str) -> bool:
+        """set default llm model"""
+
+        async def _set_default(db: Connection) -> bool:
+            # check if model exists
+            cursor = await db.execute("SELECT 1 FROM llm_models WHERE name = ?", (name,))
+            if not await cursor.fetchone():
+                return False
+
+            await db.execute("BEGIN")
+            try:
+                # reset all to false
+                await db.execute("UPDATE llm_models SET is_default = 0")
+                # set selected to true
+                await db.execute("UPDATE llm_models SET is_default = 1 WHERE name = ?", (name,))
+                await db.execute("COMMIT")
+                return True
+            except Exception:
+                await db.execute("ROLLBACK")
+                raise
+
+        return await self._execute_with_connection(_set_default)
 
     async def list_embedding_models(self) -> list[EmbeddingModelConfig]:
         """list all configured embedding models"""
@@ -695,6 +741,7 @@ class Storage:
                     endpoint=row["endpoint"],
                     api_key=row["api_key"],
                     model_name=row["model_name"],
+                    is_default=bool(row["is_default"]),
                     dimensions=row["dimensions"] or 0,
                 )
                 for row in rows
@@ -717,6 +764,7 @@ class Storage:
                 endpoint=row["endpoint"],
                 api_key=row["api_key"],
                 model_name=row["model_name"],
+                is_default=bool(row["is_default"]),
                 dimensions=row["dimensions"] or 0,
             )
 
@@ -729,14 +777,15 @@ class Storage:
             await db.execute(
                 """
                 INSERT INTO embedding_models
-                    (name, provider, endpoint, api_key, model_name, dimensions)
-                VALUES (?, ?, ?, ?, ?, ?)
+                    (name, provider, endpoint, api_key, model_name, dimensions, is_default)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(name) DO UPDATE SET
                     provider = excluded.provider,
                     endpoint = excluded.endpoint,
                     api_key = excluded.api_key,
                     model_name = excluded.model_name,
-                    dimensions = excluded.dimensions
+                    dimensions = excluded.dimensions,
+                    is_default = excluded.is_default
                 """,
                 (
                     config.name,
@@ -745,6 +794,7 @@ class Storage:
                     config.api_key,
                     config.model_name,
                     config.dimensions,
+                    config.is_default,
                 ),
             )
 
@@ -758,6 +808,31 @@ class Storage:
             return cursor.rowcount > 0
 
         return await self._execute_with_connection(_delete)
+
+    async def set_default_embedding_model(self, name: str) -> bool:
+        """set default embedding model"""
+
+        async def _set_default(db: Connection) -> bool:
+            # check if model exists
+            cursor = await db.execute("SELECT 1 FROM embedding_models WHERE name = ?", (name,))
+            if not await cursor.fetchone():
+                return False
+
+            await db.execute("BEGIN")
+            try:
+                # reset all to false
+                await db.execute("UPDATE embedding_models SET is_default = 0")
+                # set selected to true
+                await db.execute(
+                    "UPDATE embedding_models SET is_default = 1 WHERE name = ?", (name,)
+                )
+                await db.execute("COMMIT")
+                return True
+            except Exception:
+                await db.execute("ROLLBACK")
+                raise
+
+        return await self._execute_with_connection(_set_default)
 
     def _row_to_record(self, row: aiosqlite.Row) -> Record:
         return Record(
