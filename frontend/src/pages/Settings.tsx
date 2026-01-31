@@ -231,7 +231,7 @@ export default function Settings() {
         ) : (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
             {llmModels.map((model) => {
-              const isDefault = model.is_default || model.name === "default";
+              const isDefault = model.is_default;
               return (
                 <Box
                   key={model.name}
