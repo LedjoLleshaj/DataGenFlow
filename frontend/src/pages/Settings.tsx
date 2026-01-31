@@ -129,6 +129,28 @@ export default function Settings() {
     }
   };
 
+  const handleSetDefaultLlm = async (name: string) => {
+    try {
+      await llmConfigApi.setDefaultLLMModel(name);
+      toast.success("Default LLM model updated");
+      loadLlmModels();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      toast.error(`Failed to set default LLM model: ${message}`);
+    }
+  };
+
+  const handleSetDefaultEmbedding = async (name: string) => {
+    try {
+      await llmConfigApi.setDefaultEmbeddingModel(name);
+      toast.success("Default embedding model updated");
+      loadEmbeddingModels();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      toast.error(`Failed to set default embedding model: ${message}`);
+    }
+  };
+
   const handleSaveLlm = async (config: LLMModelConfig) => {
     try {
       if (editingLlm) {
@@ -208,108 +230,123 @@ export default function Settings() {
           </Box>
         ) : (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            {llmModels.map((model) => (
-              <Box
-                key={model.name}
-                sx={{
-                  p: 3,
-                  border: "1px solid",
-                  borderColor: "border.default",
-                  borderRadius: 2,
-                  bg: "canvas.subtle",
-                }}
-              >
-                <Box sx={{ display: "flex", alignItems: "start", justifyContent: "space-between" }}>
-                  <Box sx={{ flex: 1 }}>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1 }}>
-                      <Text sx={{ fontWeight: "bold", fontSize: 2, color: "fg.default" }}>
-                        {model.name}
-                      </Text>
-                      <Box
-                        sx={{
-                          px: 2,
-                          py: 1,
-                          borderRadius: 2,
-                          bg: "accent.subtle",
-                          color: "accent.fg",
-                          fontSize: 0,
-                          fontWeight: "semibold",
-                        }}
-                      >
-                        {model.provider}
-                      </Box>
-                      {model.name === "default" && (
+            {llmModels.map((model) => {
+              const isDefault = model.is_default || model.name === "default";
+              return (
+                <Box
+                  key={model.name}
+                  onClick={() => !isDefault && handleSetDefaultLlm(model.name)}
+                  sx={{
+                    p: 3,
+                    border: "1px solid",
+                    borderColor: isDefault ? "success.emphasis" : "border.default",
+                    borderRadius: 2,
+                    bg: isDefault ? "success.subtle" : "canvas.subtle",
+                    cursor: isDefault ? "default" : "pointer",
+                    transition: "all 0.2s",
+                    "&:hover": {
+                      borderColor: isDefault ? "success.emphasis" : "accent.emphasis",
+                      transform: isDefault ? "none" : "translateY(-2px)",
+                      boxShadow: isDefault ? "none" : "shadow.medium",
+                    },
+                  }}
+                >
+                  <Box sx={{ display: "flex", alignItems: "start", justifyContent: "space-between" }}>
+                    <Box sx={{ flex: 1 }}>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1 }}>
+                        <Text sx={{ fontWeight: "bold", fontSize: 2, color: "fg.default" }}>
+                          {model.name}
+                        </Text>
                         <Box
                           sx={{
                             px: 2,
                             py: 1,
                             borderRadius: 2,
-                            bg: "success.subtle",
-                            color: "success.fg",
+                            bg: "accent.subtle",
+                            color: "accent.fg",
                             fontSize: 0,
                             fontWeight: "semibold",
                           }}
                         >
-                          default
+                          {model.provider}
                         </Box>
-                      )}
-                    </Box>
-                    <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mb: 1 }}>
-                      <Text sx={{ fontSize: 1, color: "fg.muted", mb: 1 }}>
-                        model: {model.model_name}
-                      </Text>
-                      <Text sx={{ fontSize: 1, color: "fg.muted", fontFamily: "mono" }}>
-                        {model.endpoint}
-                      </Text>
-                    </Box>
-                  </Box>
-
-                  <Box sx={{ display: "flex", gap: 2 }}>
-                    <Button
-                      size="small"
-                      variant="default"
-                      onClick={() => handleTestLlm(model)}
-                      disabled={testingLlm === model.name}
-                      sx={{
-                        color: testingLlm === model.name ? "fg.muted" : "success.fg",
-                        borderColor:
-                          testingLlm === model.name ? "border.default" : "success.emphasis",
-                        "&:hover:not(:disabled)": {
-                          bg: "success.subtle",
-                          borderColor: "success.emphasis",
-                          color: "success.fg",
-                        },
-                      }}
-                    >
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                        {testingLlm === model.name ? (
-                          <Spinner size="small" />
-                        ) : (
-                          <CheckCircleIcon size={16} />
+                        {isDefault && (
+                          <Box
+                            sx={{
+                              px: 2,
+                              py: 1,
+                              borderRadius: 2,
+                              bg: "success.emphasis",
+                              color: "fg.onEmphasis",
+                              fontSize: 0,
+                              fontWeight: "semibold",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 1,
+                            }}
+                          >
+                            <CheckCircleFillIcon size={12} />
+                            default
+                          </Box>
                         )}
-                        <Text>{testingLlm === model.name ? "Testing..." : "Test"}</Text>
                       </Box>
-                    </Button>
-                    <IconButton
-                      icon={PencilIcon}
-                      aria-label="edit"
-                      size="small"
-                      onClick={() => {
-                        setEditingLlm(model);
-                        setLlmModalOpen(true);
-                      }}
-                    />
-                    <IconButton
-                      icon={TrashIcon}
-                      aria-label="delete"
-                      size="small"
-                      variant="danger"
-                      onClick={() => setDeletingLlm(model.name)}
-                    />
+                      <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mb: 1 }}>
+                        <Text sx={{ fontSize: 1, color: "fg.muted", mb: 1 }}>
+                          model: {model.model_name}
+                        </Text>
+                        <Text sx={{ fontSize: 1, color: "fg.muted", fontFamily: "mono" }}>
+                          {model.endpoint}
+                        </Text>
+                      </Box>
+                    </Box>
+
+                    <Box sx={{ display: "flex", gap: 2 }} onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+                      <Button
+                        size="small"
+                        variant="default"
+                        onClick={() => handleTestLlm(model)}
+                        disabled={testingLlm === model.name}
+                        sx={{
+                          color: testingLlm === model.name ? "fg.muted" : "success.fg",
+                          borderColor:
+                            testingLlm === model.name ? "border.default" : "success.emphasis",
+                          "&:hover:not(:disabled)": {
+                            bg: "success.subtle",
+                            borderColor: "success.emphasis",
+                            color: "success.fg",
+                          },
+                        }}
+                      >
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                          {testingLlm === model.name ? (
+                            <Spinner size="small" />
+                          ) : (
+                            <CheckCircleIcon size={16} />
+                          )}
+                          <Text>{testingLlm === model.name ? "Testing..." : "Test"}</Text>
+                        </Box>
+                      </Button>
+                      <IconButton
+                        icon={PencilIcon}
+                        aria-label="edit"
+                        size="small"
+                        onClick={() => {
+                          setEditingLlm(model);
+                          setLlmModalOpen(true);
+                        }}
+                      />
+                      <IconButton
+                        icon={TrashIcon}
+                        aria-label="delete"
+                        size="small"
+                        variant="danger"
+                        onClick={() => setDeletingLlm(model.name)}
+                      />
+                    </Box>
                   </Box>
                 </Box>
-              </Box>
-            ))}
+              );
+            })}
           </Box>
         )}
       </Box>
@@ -351,92 +388,122 @@ export default function Settings() {
           </Box>
         ) : (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
-            {embeddingModels.map((model) => (
-              <Box
-                key={model.name}
-                sx={{
-                  p: 3,
-                  border: "1px solid",
-                  borderColor: "border.default",
-                  borderRadius: 2,
-                  bg: "canvas.subtle",
-                }}
-              >
-                <Box sx={{ display: "flex", alignItems: "start", justifyContent: "space-between" }}>
-                  <Box sx={{ flex: 1, display: "flex", flexDirection: "column" }}>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1 }}>
-                      <Text sx={{ fontWeight: "bold", fontSize: 2, color: "fg.default" }}>
-                        {model.name}
+            {embeddingModels.map((model) => {
+              const isDefault = model.is_default || model.name === "default";
+              return (
+                <Box
+                  key={model.name}
+                  onClick={() => !isDefault && handleSetDefaultEmbedding(model.name)}
+                  sx={{
+                    p: 3,
+                    border: "1px solid",
+                    borderColor: isDefault ? "success.emphasis" : "border.default",
+                    borderRadius: 2,
+                    bg: isDefault ? "success.subtle" : "canvas.subtle",
+                    cursor: isDefault ? "default" : "pointer",
+                    transition: "all 0.2s",
+                    "&:hover": {
+                      borderColor: isDefault ? "success.emphasis" : "accent.emphasis",
+                      transform: isDefault ? "none" : "translateY(-2px)",
+                      boxShadow: isDefault ? "none" : "shadow.medium",
+                    },
+                  }}
+                >
+                  <Box sx={{ display: "flex", alignItems: "start", justifyContent: "space-between" }}>
+                    <Box sx={{ flex: 1, display: "flex", flexDirection: "column" }}>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1 }}>
+                        <Text sx={{ fontWeight: "bold", fontSize: 2, color: "fg.default" }}>
+                          {model.name}
+                        </Text>
+                        <Box
+                          sx={{
+                            px: 2,
+                            py: 1,
+                            borderRadius: 2,
+                            bg: "accent.subtle",
+                            color: "accent.fg",
+                            fontSize: 0,
+                            fontWeight: "semibold",
+                          }}
+                        >
+                          {model.provider}
+                        </Box>
+                        {isDefault && (
+                          <Box
+                            sx={{
+                              px: 2,
+                              py: 1,
+                              borderRadius: 2,
+                              bg: "success.emphasis",
+                              color: "fg.onEmphasis",
+                              fontSize: 0,
+                              fontWeight: "semibold",
+                              display: "flex",
+                              alignItems: "center",
+                              gap: 1,
+                            }}
+                          >
+                            <CheckCircleFillIcon size={12} />
+                            default
+                          </Box>
+                        )}
+                      </Box>
+                      <Text sx={{ fontSize: 1, color: "fg.muted", mb: 1 }}>
+                        model: {model.model_name}
+                        {model.dimensions && ` (${model.dimensions}d)`}
                       </Text>
-                      <Box
+                      <Text sx={{ fontSize: 1, color: "fg.muted", fontFamily: "mono" }}>
+                        {model.endpoint}
+                      </Text>
+                    </Box>
+
+                    <Box sx={{ display: "flex", gap: 2 }} onClick={(e: React.MouseEvent) => e.stopPropagation()}>
+                      <Button
+                        size="small"
+                        variant="default"
+                        onClick={() => handleTestEmbedding(model)}
+                        disabled={testingEmbedding === model.name}
                         sx={{
-                          px: 2,
-                          py: 1,
-                          borderRadius: 2,
-                          bg: "accent.subtle",
-                          color: "accent.fg",
-                          fontSize: 0,
-                          fontWeight: "semibold",
+                          color: testingEmbedding === model.name ? "fg.muted" : "success.fg",
+                          borderColor:
+                            testingEmbedding === model.name ? "border.default" : "success.emphasis",
+                          "&:hover:not(:disabled)": {
+                            bg: "success.subtle",
+                            borderColor: "success.emphasis",
+                            color: "success.fg",
+                          },
                         }}
                       >
-                        {model.provider}
-                      </Box>
+                        <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                          {testingEmbedding === model.name ? (
+                            <Spinner size="small" />
+                          ) : (
+                            <CheckCircleIcon size={16} />
+                          )}
+                          <Text>{testingEmbedding === model.name ? "Testing..." : "Test"}</Text>
+                        </Box>
+                      </Button>
+                      <IconButton
+                        icon={PencilIcon}
+                        aria-label="edit"
+                        size="small"
+                        onClick={() => {
+                          setEditingEmbedding(model);
+                          setEmbeddingModalOpen(true);
+                        }}
+                      />
+                      <IconButton
+                        icon={TrashIcon}
+                        aria-label="delete"
+                        size="small"
+                        variant="danger"
+                        onClick={() => setDeletingEmbedding(model.name)}
+                      />
                     </Box>
-                    <Text sx={{ fontSize: 1, color: "fg.muted", mb: 1 }}>
-                      model: {model.model_name}
-                      {model.dimensions && ` (${model.dimensions}d)`}
-                    </Text>
-                    <Text sx={{ fontSize: 1, color: "fg.muted", fontFamily: "mono" }}>
-                      {model.endpoint}
-                    </Text>
-                  </Box>
-
-                  <Box sx={{ display: "flex", gap: 2 }}>
-                    <Button
-                      size="small"
-                      variant="default"
-                      onClick={() => handleTestEmbedding(model)}
-                      disabled={testingEmbedding === model.name}
-                      sx={{
-                        color: testingEmbedding === model.name ? "fg.muted" : "success.fg",
-                        borderColor:
-                          testingEmbedding === model.name ? "border.default" : "success.emphasis",
-                        "&:hover:not(:disabled)": {
-                          bg: "success.subtle",
-                          borderColor: "success.emphasis",
-                          color: "success.fg",
-                        },
-                      }}
-                    >
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                        {testingEmbedding === model.name ? (
-                          <Spinner size="small" />
-                        ) : (
-                          <CheckCircleIcon size={16} />
-                        )}
-                        <Text>{testingEmbedding === model.name ? "Testing..." : "Test"}</Text>
-                      </Box>
-                    </Button>
-                    <IconButton
-                      icon={PencilIcon}
-                      aria-label="edit"
-                      size="small"
-                      onClick={() => {
-                        setEditingEmbedding(model);
-                        setEmbeddingModalOpen(true);
-                      }}
-                    />
-                    <IconButton
-                      icon={TrashIcon}
-                      aria-label="delete"
-                      size="small"
-                      variant="danger"
-                      onClick={() => setDeletingEmbedding(model.name)}
-                    />
                   </Box>
                 </Box>
-              </Box>
-            ))}
+              );
+            })}
           </Box>
         )}
       </Box>

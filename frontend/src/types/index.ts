@@ -95,6 +95,7 @@ export interface LLMModelConfig {
   endpoint: string;
   api_key: string | null;
   model_name: string;
+  is_default?: boolean;
 }
 
 export interface EmbeddingModelConfig {
@@ -104,6 +105,7 @@ export interface EmbeddingModelConfig {
   api_key: string | null;
   model_name: string;
   dimensions: number | null;
+  is_default?: boolean;
 }
 
 export interface ConnectionTestResult {
