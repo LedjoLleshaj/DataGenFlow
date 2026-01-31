@@ -85,6 +85,7 @@ config.py                 # env Settings
 - `POST /api/llm-models` - create config
 - `PUT /api/llm-models/{name}` - update config
 - `DELETE /api/llm-models/{name}` - delete config
+- `PUT /api/llm-models/{name}/default` - set default model
 - `POST /api/llm-models/test` - test connection
 
 ### embedding config
@@ -93,6 +94,7 @@ config.py                 # env Settings
 - `POST /api/embedding-models` - create config
 - `PUT /api/embedding-models/{name}` - update config
 - `DELETE /api/embedding-models/{name}` - delete config
+- `PUT /api/embedding-models/{name}/default` - set default model
 - `POST /api/embedding-models/test` - test connection
 
 ## database schema
