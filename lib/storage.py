@@ -206,9 +206,7 @@ class Storage:
         embedding_column_names = [col[1] for col in embedding_columns]
 
         if "is_default" not in embedding_column_names:
-            await db.execute(
-                "ALTER TABLE embedding_models ADD COLUMN is_default BOOLEAN DEFAULT 0"
-            )
+            await db.execute("ALTER TABLE embedding_models ADD COLUMN is_default BOOLEAN DEFAULT 0")
 
     async def _migrate_env_to_db(self, db: Connection) -> None:
         """migrate .env config to database if no models configured"""
@@ -686,7 +684,8 @@ class Storage:
 
                 await db.execute(
                     """
-                    INSERT INTO llm_models (name, provider, endpoint, api_key, model_name, is_default)
+                    INSERT INTO llm_models
+                    (name, provider, endpoint, api_key, model_name, is_default)
                     VALUES (?, ?, ?, ?, ?, ?)
                     ON CONFLICT(name) DO UPDATE SET
                         provider = excluded.provider,
@@ -719,19 +718,19 @@ class Storage:
             try:
                 cursor = await db.execute("DELETE FROM llm_models WHERE name = ?", (name,))
                 deleted = cursor.rowcount > 0
-                
+
                 if deleted:
                     # if we deleted the default model (or the last default), pick a new one
                     # this query updates a model to default ONLY IF no default currently exists
                     await db.execute(
                         """
-                        UPDATE llm_models 
-                        SET is_default = 1 
+                        UPDATE llm_models
+                        SET is_default = 1
                         WHERE name = (SELECT name FROM llm_models ORDER BY name LIMIT 1)
                         AND (SELECT COUNT(*) FROM llm_models WHERE is_default = 1) = 0
                         """
                     )
-                
+
                 await db.execute("COMMIT")
                 return deleted
             except Exception:
@@ -860,18 +859,18 @@ class Storage:
             try:
                 cursor = await db.execute("DELETE FROM embedding_models WHERE name = ?", (name,))
                 deleted = cursor.rowcount > 0
-                
+
                 if deleted:
                     # if we deleted the default model (or the last default), pick a new one
                     await db.execute(
                         """
-                        UPDATE embedding_models 
-                        SET is_default = 1 
+                        UPDATE embedding_models
+                        SET is_default = 1
                         WHERE name = (SELECT name FROM embedding_models ORDER BY name LIMIT 1)
                         AND (SELECT COUNT(*) FROM embedding_models WHERE is_default = 1) = 0
                         """
                     )
-                
+
                 await db.execute("COMMIT")
                 return deleted
             except Exception:
