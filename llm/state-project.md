@@ -371,7 +371,7 @@ production-ready full-stack data generation platform
 - structured errors with context
 - sqlite with migrations
 - type-safe BlockExecutionContext
-- LLM/embedding config management (multi-provider)
+- LLM/embedding config management (multi-provider) + default model selection
 - 4 pages: Pipelines, Generator, Review, Settings
 - primer + dark mode
 - accumulated state visualization

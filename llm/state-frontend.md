@@ -154,7 +154,7 @@ shadcn radix-ui dialog, replaces browser confirm()
 **endpoints:**
 - GET /api/blocks, /api/templates, /api/pipelines, /api/jobs/active, /api/jobs/{id}, /api/records
 - POST /api/pipelines, /api/pipelines/from_template/{id}, /api/generate, /api/seeds/validate
-- PUT /api/records/{id}, /api/llm-models/{name}, /api/embedding-models/{name}
+- PUT /api/records/{id}, /api/llm-models/{name}, /api/embedding-models/{name}, /api/llm-models/{name}/default, /api/embedding-models/{name}/default
 - DELETE /api/pipelines/{id}, /api/jobs/{id}, /api/records
 - GET /api/export/download, /api/llm-models, /api/embedding-models
 
