@@ -50,6 +50,16 @@ class LLMConfigApi {
     }
   }
 
+  async setDefaultLLMModel(name: string): Promise<void> {
+    const response = await fetch(`${API_BASE}/llm-models/${encodeURIComponent(name)}/default`, {
+      method: "PUT",
+    });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || `http ${response.status}`);
+    }
+  }
+
   async testLLMConnection(config: LLMModelConfig): Promise<ConnectionTestResult> {
     const response = await fetch(`${API_BASE}/llm-models/test`, {
       method: "POST",
@@ -101,6 +111,19 @@ class LLMConfigApi {
     const response = await fetch(`${API_BASE}/embedding-models/${encodeURIComponent(name)}`, {
       method: "DELETE",
     });
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || `http ${response.status}`);
+    }
+  }
+
+  async setDefaultEmbeddingModel(name: string): Promise<void> {
+    const response = await fetch(
+      `${API_BASE}/embedding-models/${encodeURIComponent(name)}/default`,
+      {
+        method: "PUT",
+      }
+    );
     if (!response.ok) {
       const error = await response.json();
       throw new Error(error.detail || `http ${response.status}`);
