@@ -7,6 +7,8 @@ import {
   CheckCircleIcon,
   CircleIcon,
   CheckCircleFillIcon,
+  StarFillIcon,
+  StarIcon,
 } from "@primer/octicons-react";
 import { toast } from "sonner";
 import type { LLMModelConfig, EmbeddingModelConfig } from "../types";
@@ -235,20 +237,13 @@ export default function Settings() {
               return (
                 <Box
                   key={model.name}
-                  onClick={() => !isDefault && handleSetDefaultLlm(model.name)}
                   sx={{
                     p: 3,
                     border: "1px solid",
-                    borderColor: isDefault ? "success.emphasis" : "border.default",
+                    borderColor: "border.default",
                     borderRadius: 2,
-                    bg: isDefault ? "success.subtle" : "canvas.subtle",
-                    cursor: isDefault ? "default" : "pointer",
+                    bg: "canvas.subtle",
                     transition: "all 0.2s",
-                    "&:hover": {
-                      borderColor: isDefault ? "success.emphasis" : "accent.emphasis",
-                      transform: isDefault ? "none" : "translateY(-2px)",
-                      boxShadow: isDefault ? "none" : "shadow.medium",
-                    },
                   }}
                 >
                   <Box
@@ -278,8 +273,9 @@ export default function Settings() {
                               px: 2,
                               py: 1,
                               borderRadius: 2,
-                              bg: "success.emphasis",
-                              color: "fg.onEmphasis",
+                              border: "1px solid",
+                              borderColor: "success.emphasis",
+                              color: "success.fg",
                               fontSize: 0,
                               fontWeight: "semibold",
                               display: "flex",
@@ -288,7 +284,7 @@ export default function Settings() {
                             }}
                           >
                             <CheckCircleFillIcon size={12} />
-                            default
+                            Default
                           </Box>
                         )}
                       </Box>
@@ -302,10 +298,30 @@ export default function Settings() {
                       </Box>
                     </Box>
 
-                    <Box
-                      sx={{ display: "flex", gap: 2 }}
-                      onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                    >
+                    <Box sx={{ display: "flex", gap: 2 }}>
+                      {!isDefault && (
+                        <Tooltip aria-label="Set as default model" direction="s">
+                          <Button
+                            size="small"
+                            variant="default"
+                            onClick={() => handleSetDefaultLlm(model.name)}
+                            sx={{
+                              color: "attention.fg",
+                              borderColor: "attention.emphasis",
+                              "&:hover": {
+                                bg: "attention.subtle",
+                                borderColor: "attention.emphasis",
+                                color: "attention.fg",
+                              },
+                            }}
+                          >
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                              <StarIcon size={16} />
+                              <Text>Set Default</Text>
+                            </Box>
+                          </Button>
+                        </Tooltip>
+                      )}
                       <Button
                         size="small"
                         variant="default"
@@ -398,20 +414,13 @@ export default function Settings() {
               return (
                 <Box
                   key={model.name}
-                  onClick={() => !isDefault && handleSetDefaultEmbedding(model.name)}
                   sx={{
                     p: 3,
                     border: "1px solid",
-                    borderColor: isDefault ? "success.emphasis" : "border.default",
+                    borderColor: "border.default",
                     borderRadius: 2,
-                    bg: isDefault ? "success.subtle" : "canvas.subtle",
-                    cursor: isDefault ? "default" : "pointer",
+                    bg: "canvas.subtle",
                     transition: "all 0.2s",
-                    "&:hover": {
-                      borderColor: isDefault ? "success.emphasis" : "accent.emphasis",
-                      transform: isDefault ? "none" : "translateY(-2px)",
-                      boxShadow: isDefault ? "none" : "shadow.medium",
-                    },
                   }}
                 >
                   <Box
@@ -441,8 +450,9 @@ export default function Settings() {
                               px: 2,
                               py: 1,
                               borderRadius: 2,
-                              bg: "success.emphasis",
-                              color: "fg.onEmphasis",
+                              border: "1px solid",
+                              borderColor: "success.emphasis",
+                              color: "success.fg",
                               fontSize: 0,
                               fontWeight: "semibold",
                               display: "flex",
@@ -464,10 +474,30 @@ export default function Settings() {
                       </Text>
                     </Box>
 
-                    <Box
-                      sx={{ display: "flex", gap: 2 }}
-                      onClick={(e: React.MouseEvent) => e.stopPropagation()}
-                    >
+                    <Box sx={{ display: "flex", gap: 2 }}>
+                      {!isDefault && (
+                        <Tooltip aria-label="Set as default model" direction="s">
+                          <Button
+                            size="small"
+                            variant="default"
+                            onClick={() => handleSetDefaultEmbedding(model.name)}
+                            sx={{
+                              color: "attention.fg",
+                              borderColor: "attention.emphasis",
+                              "&:hover": {
+                                bg: "attention.subtle",
+                                borderColor: "attention.emphasis",
+                                color: "attention.fg",
+                              },
+                            }}
+                          >
+                            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                              <StarIcon size={16} />
+                              <Text>Set Default</Text>
+                            </Box>
+                          </Button>
+                        </Tooltip>
+                      )}
                       <Button
                         size="small"
                         variant="default"
