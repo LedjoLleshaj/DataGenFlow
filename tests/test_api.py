@@ -523,3 +523,43 @@ class TestAPIErrors:
         """Test executing non-existent pipeline"""
         response = client.post("/api/pipelines/999999/execute", json={"text": "test"})
         assert response.status_code == 404
+
+
+class TestAPIDefaultModelSelection:
+    """Test default model selection API endpoints"""
+
+    def test_set_default_llm_model_success_returns_message(self, client):
+        """Test PUT /api/llm-models/{name}/default - success"""
+        model_config = {
+            "name": "test-llm",
+            "provider": "openai",
+            "model_name": "gpt-4",
+            "api_key": "test-key",
+        }
+        client.post("/api/llm-models", json=model_config)
+        response = client.put("/api/llm-models/test-llm/default")
+        assert response.status_code == 200
+        assert response.json()["message"] == "llm model set as default successfully"
+
+    def test_set_default_llm_model_nonexistent_returns_404(self, client):
+        """Test PUT /api/llm-models/{name}/default - not found"""
+        response = client.put("/api/llm-models/nonexistent/default")
+        assert response.status_code == 404
+
+    def test_set_default_embedding_model_success_returns_message(self, client):
+        """Test PUT /api/embedding-models/{name}/default - success"""
+        model_config = {
+            "name": "test-embed",
+            "provider": "openai",
+            "model_name": "text-embedding-3-small",
+            "api_key": "test-key",
+        }
+        client.post("/api/embedding-models", json=model_config)
+        response = client.put("/api/embedding-models/test-embed/default")
+        assert response.status_code == 200
+        assert response.json()["message"] == "embedding model set as default successfully"
+
+    def test_set_default_embedding_model_nonexistent_returns_404(self, client):
+        """Test PUT /api/embedding-models/{name}/default - not found"""
+        response = client.put("/api/embedding-models/nonexistent/default")
+        assert response.status_code == 404

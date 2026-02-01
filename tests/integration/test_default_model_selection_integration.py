@@ -2,7 +2,7 @@ import pytest
 import pytest_asyncio
 
 from lib.entities import EmbeddingModelConfig, LLMModelConfig, LLMProvider
-from lib.llm_config import LLMConfigManager
+from lib.llm_config import LLMConfigManager, LLMConfigNotFoundError
 from lib.storage import Storage
 
 
@@ -142,9 +142,6 @@ async def test_embedding_default_selection_flow(llm_config_manager):
 
 @pytest.mark.asyncio
 async def test_set_nonexistent_default_raises_error(llm_config_manager):
-    """Test setting a non-existent model as default raises error"""
-    with pytest.raises(
-        Exception
-    ):  # storage likely raises a ValueError or similar, manager re-raises or wraps
-        # The manager method set_default_llm_model catches storage false return and raises LLMConfigNotFoundError
+    """Test setting a non-existent model as default raises LLMConfigNotFoundError"""
+    with pytest.raises(LLMConfigNotFoundError):
         await llm_config_manager.set_default_llm_model("non_existent_model")

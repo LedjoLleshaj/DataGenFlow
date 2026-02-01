@@ -40,7 +40,6 @@ class LLMConfigManager:
         """get llm config by name, or default if name is none
 
         uses fallback chain to ensure blocks always have a model available:
-        uses fallback chain to ensure blocks always have a model available:
         1. requested name
         2. model marked as default (is_default=True)
         3. model named "default" (legacy)
@@ -132,7 +131,6 @@ class LLMConfigManager:
     async def get_embedding_model(self, name: str | None = None) -> EmbeddingModelConfig:
         """get embedding config by name, or default if name is none
 
-        fallback chain:
         fallback chain:
         1. requested name
         2. model marked as default (is_default=True)
