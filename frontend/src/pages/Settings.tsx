@@ -28,6 +28,8 @@ export default function Settings() {
   const [testingEmbedding, setTestingEmbedding] = useState<string | null>(null);
   const [deletingLlm, setDeletingLlm] = useState<string | null>(null);
   const [deletingEmbedding, setDeletingEmbedding] = useState<string | null>(null);
+  const [settingDefaultLlm, setSettingDefaultLlm] = useState<string | null>(null);
+  const [settingDefaultEmbedding, setSettingDefaultEmbedding] = useState<string | null>(null);
   const [langfuseEnabled, setLangfuseEnabled] = useState<boolean>(false);
   const [langfuseHost, setLangfuseHost] = useState<string | null>(null);
   const [loadingLangfuse, setLoadingLangfuse] = useState(true);
@@ -132,6 +134,8 @@ export default function Settings() {
   };
 
   const handleSetDefaultLlm = async (name: string) => {
+    if (settingDefaultLlm === name) return;
+    setSettingDefaultLlm(name);
     try {
       await llmConfigApi.setDefaultLLMModel(name);
       toast.success("Default LLM model updated");
@@ -139,10 +143,14 @@ export default function Settings() {
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       toast.error(`Failed to set default LLM model: ${message}`);
+    } finally {
+      setSettingDefaultLlm(null);
     }
   };
 
   const handleSetDefaultEmbedding = async (name: string) => {
+    if (settingDefaultEmbedding === name) return;
+    setSettingDefaultEmbedding(name);
     try {
       await llmConfigApi.setDefaultEmbeddingModel(name);
       toast.success("Default embedding model updated");
@@ -150,6 +158,8 @@ export default function Settings() {
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       toast.error(`Failed to set default embedding model: ${message}`);
+    } finally {
+      setSettingDefaultEmbedding(null);
     }
   };
 
@@ -305,10 +315,11 @@ export default function Settings() {
                             size="small"
                             variant="default"
                             onClick={() => handleSetDefaultLlm(model.name)}
+                            disabled={settingDefaultLlm === model.name}
                             sx={{
                               color: "attention.fg",
                               borderColor: "attention.emphasis",
-                              "&:hover": {
+                              "&:hover:not(:disabled)": {
                                 bg: "attention.subtle",
                                 borderColor: "attention.emphasis",
                                 color: "attention.fg",
@@ -316,8 +327,12 @@ export default function Settings() {
                             }}
                           >
                             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                              <StarIcon size={16} />
-                              <Text>Set Default</Text>
+                              {settingDefaultLlm === model.name ? (
+                                <Spinner size="small" />
+                              ) : (
+                                <StarIcon size={16} />
+                              )}
+                              <Text>{settingDefaultLlm === model.name ? "Setting..." : "Set Default"}</Text>
                             </Box>
                           </Button>
                         </Tooltip>
@@ -461,7 +476,7 @@ export default function Settings() {
                             }}
                           >
                             <CheckCircleFillIcon size={12} />
-                            default
+                            Default
                           </Box>
                         )}
                       </Box>
@@ -481,10 +496,11 @@ export default function Settings() {
                             size="small"
                             variant="default"
                             onClick={() => handleSetDefaultEmbedding(model.name)}
+                            disabled={settingDefaultEmbedding === model.name}
                             sx={{
                               color: "attention.fg",
                               borderColor: "attention.emphasis",
-                              "&:hover": {
+                              "&:hover:not(:disabled)": {
                                 bg: "attention.subtle",
                                 borderColor: "attention.emphasis",
                                 color: "attention.fg",
@@ -492,8 +508,12 @@ export default function Settings() {
                             }}
                           >
                             <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                              <StarIcon size={16} />
-                              <Text>Set Default</Text>
+                              {settingDefaultEmbedding === model.name ? (
+                                <Spinner size="small" />
+                              ) : (
+                                <StarIcon size={16} />
+                              )}
+                              <Text>{settingDefaultEmbedding === model.name ? "Setting..." : "Set Default"}</Text>
                             </Box>
                           </Button>
                         </Tooltip>
