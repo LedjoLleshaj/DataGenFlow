@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { Box, Text, Button, IconButton, Spinner, Tooltip } from "@primer/react";
 import {
   TrashIcon,
@@ -8,29 +9,35 @@ import {
 } from "@primer/octicons-react";
 import type { LLMModelConfig, EmbeddingModelConfig } from "../../types";
 
-interface ModelCardProps<T extends LLMModelConfig | EmbeddingModelConfig> {
-  model: T;
+interface ModelCardStatus {
   isDefault: boolean;
   isTesting: boolean;
   isSettingDefault: boolean;
+}
+
+interface ModelCardActions {
   onSetDefault: () => void;
   onTest: () => void;
   onEdit: () => void;
   onDelete: () => void;
-  extraDetails?: React.ReactNode;
+}
+
+interface ModelCardProps<T extends LLMModelConfig | EmbeddingModelConfig> {
+  model: T;
+  status: ModelCardStatus;
+  actions: ModelCardActions;
+  extraDetails?: ReactNode;
 }
 
 export function ModelCard<T extends LLMModelConfig | EmbeddingModelConfig>({
   model,
-  isDefault,
-  isTesting,
-  isSettingDefault,
-  onSetDefault,
-  onTest,
-  onEdit,
-  onDelete,
+  status,
+  actions,
   extraDetails,
 }: ModelCardProps<T>) {
+  const { isDefault, isTesting, isSettingDefault } = status;
+  const { onSetDefault, onTest, onEdit, onDelete } = actions;
+
   return (
     <Box
       sx={{
@@ -44,7 +51,7 @@ export function ModelCard<T extends LLMModelConfig | EmbeddingModelConfig>({
     >
       <Box sx={{ display: "flex", alignItems: "start", justifyContent: "space-between" }}>
         <Box sx={{ flex: 1, display: "flex", flexDirection: "column" }}>
-          {/* Name and badges row */}
+          {/* name and badges row */}
           <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1 }}>
             <Text sx={{ fontWeight: "bold", fontSize: 2, color: "fg.default" }}>{model.name}</Text>
             <Box
@@ -60,6 +67,7 @@ export function ModelCard<T extends LLMModelConfig | EmbeddingModelConfig>({
             >
               {model.provider}
             </Box>
+            {/* isDefault renders the default badge with CheckCircleFillIcon to visually distinguish the selected model */}
             {isDefault && (
               <Box
                 sx={{
@@ -82,7 +90,7 @@ export function ModelCard<T extends LLMModelConfig | EmbeddingModelConfig>({
             )}
           </Box>
 
-          {/* Model details */}
+          {/* model details - model.model_name and model.endpoint; extraDetails may be appended for additional info like embedding dimensions */}
           <Text sx={{ fontSize: 1, color: "fg.muted", mb: 1 }}>
             model: {model.model_name}
             {extraDetails}
@@ -90,7 +98,7 @@ export function ModelCard<T extends LLMModelConfig | EmbeddingModelConfig>({
           <Text sx={{ fontSize: 1, color: "fg.muted", fontFamily: "mono" }}>{model.endpoint}</Text>
         </Box>
 
-        {/* Action buttons */}
+        {/* action buttons */}
         <Box sx={{ display: "flex", gap: 2 }}>
           {!isDefault && (
             <Tooltip aria-label="Set as default model" direction="s">

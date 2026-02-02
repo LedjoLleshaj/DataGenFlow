@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { Box, Heading, Text, Button, Spinner, Tooltip } from "@primer/react";
 import { PlusIcon, CircleIcon, CheckCircleFillIcon } from "@primer/octicons-react";
 import { toast } from "sonner";
@@ -26,10 +26,16 @@ export default function Settings() {
   const [langfuseHost, setLangfuseHost] = useState<string | null>(null);
   const [loadingLangfuse, setLoadingLangfuse] = useState(true);
 
+  const isMountedRef = useRef(true);
+
   useEffect(() => {
     loadLlmModels();
     loadEmbeddingModels();
     loadLangfuseStatus();
+
+    return () => {
+      isMountedRef.current = false;
+    };
   }, []);
 
   const loadLlmModels = async () => {
@@ -101,10 +107,13 @@ export default function Settings() {
         toast.error(`Connection test failed: ${result.message}`);
       }
     } catch (error) {
+      console.error(error);
       const message = error instanceof Error ? error.message : "Unknown error";
       toast.error(`Connection test failed: ${message}`);
     } finally {
-      setTestingLlm(null);
+      if (isMountedRef.current) {
+        setTestingLlm(null);
+      }
     }
   };
 
@@ -118,10 +127,13 @@ export default function Settings() {
         toast.error(`Connection test failed: ${result.message}`);
       }
     } catch (error) {
+      console.error(error);
       const message = error instanceof Error ? error.message : "Unknown error";
       toast.error(`Connection test failed: ${message}`);
     } finally {
-      setTestingEmbedding(null);
+      if (isMountedRef.current) {
+        setTestingEmbedding(null);
+      }
     }
   };
 
@@ -133,10 +145,13 @@ export default function Settings() {
       toast.success("Default LLM model updated");
       loadLlmModels();
     } catch (error) {
+      console.error(error);
       const message = error instanceof Error ? error.message : "Unknown error";
       toast.error(`Failed to set default LLM model: ${message}`);
     } finally {
-      setSettingDefaultLlm(null);
+      if (isMountedRef.current) {
+        setSettingDefaultLlm(null);
+      }
     }
   };
 
@@ -148,10 +163,13 @@ export default function Settings() {
       toast.success("Default embedding model updated");
       loadEmbeddingModels();
     } catch (error) {
+      console.error(error);
       const message = error instanceof Error ? error.message : "Unknown error";
       toast.error(`Failed to set default embedding model: ${message}`);
     } finally {
-      setSettingDefaultEmbedding(null);
+      if (isMountedRef.current) {
+        setSettingDefaultEmbedding(null);
+      }
     }
   };
 
@@ -238,16 +256,20 @@ export default function Settings() {
               <ModelCard
                 key={model.name}
                 model={model}
-                isDefault={model.is_default ?? false}
-                isTesting={testingLlm === model.name}
-                isSettingDefault={settingDefaultLlm === model.name}
-                onSetDefault={() => handleSetDefaultLlm(model.name)}
-                onTest={() => handleTestLlm(model)}
-                onEdit={() => {
-                  setEditingLlm(model);
-                  setLlmModalOpen(true);
+                status={{
+                  isDefault: model.is_default ?? false,
+                  isTesting: testingLlm === model.name,
+                  isSettingDefault: settingDefaultLlm === model.name,
                 }}
-                onDelete={() => setDeletingLlm(model.name)}
+                actions={{
+                  onSetDefault: () => handleSetDefaultLlm(model.name),
+                  onTest: () => handleTestLlm(model),
+                  onEdit: () => {
+                    setEditingLlm(model);
+                    setLlmModalOpen(true);
+                  },
+                  onDelete: () => setDeletingLlm(model.name),
+                }}
               />
             ))}
           </Box>
@@ -295,16 +317,20 @@ export default function Settings() {
               <ModelCard
                 key={model.name}
                 model={model}
-                isDefault={model.is_default ?? false}
-                isTesting={testingEmbedding === model.name}
-                isSettingDefault={settingDefaultEmbedding === model.name}
-                onSetDefault={() => handleSetDefaultEmbedding(model.name)}
-                onTest={() => handleTestEmbedding(model)}
-                onEdit={() => {
-                  setEditingEmbedding(model);
-                  setEmbeddingModalOpen(true);
+                status={{
+                  isDefault: model.is_default ?? false,
+                  isTesting: testingEmbedding === model.name,
+                  isSettingDefault: settingDefaultEmbedding === model.name,
                 }}
-                onDelete={() => setDeletingEmbedding(model.name)}
+                actions={{
+                  onSetDefault: () => handleSetDefaultEmbedding(model.name),
+                  onTest: () => handleTestEmbedding(model),
+                  onEdit: () => {
+                    setEditingEmbedding(model);
+                    setEmbeddingModalOpen(true);
+                  },
+                  onDelete: () => setDeletingEmbedding(model.name),
+                }}
                 extraDetails={model.dimensions ? ` (${model.dimensions}d)` : undefined}
               />
             ))}
