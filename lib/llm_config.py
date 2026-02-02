@@ -41,9 +41,10 @@ class LLMConfigManager:
 
         uses fallback chain to ensure blocks always have a model available:
         1. requested name
-        2. model named "default"
-        3. first model in db
-        4. .env fallback (LLM_ENDPOINT, LLM_API_KEY, LLM_MODEL)
+        2. model marked as default (is_default=True)
+        3. model named "default" (legacy)
+        4. first model in db
+        5. .env fallback (LLM_ENDPOINT, LLM_API_KEY, LLM_MODEL)
         """
         if name:
             config = await self.storage.get_llm_model(name)
@@ -53,14 +54,18 @@ class LLMConfigManager:
                 f"llm model '{name}' not found", detail={"requested_name": name}
             )
 
-        # try default model
-        config = await self.storage.get_llm_model("default")
-        if config:
-            return config
-
-        # try first model
+        # try explicit default model or model named "default"
         all_models = await self.storage.list_llm_models()
         if all_models:
+            # check for is_default=True
+            for model in all_models:
+                if model.is_default:
+                    return model
+            # fallback to name="default"
+            for model in all_models:
+                if model.name == "default":
+                    return model
+            # fallback to first model
             return all_models[0]
 
         # fallback to .env
@@ -93,6 +98,12 @@ class LLMConfigManager:
         if not success:
             raise LLMConfigNotFoundError(f"llm model '{name}' not found", detail={"name": name})
 
+    async def set_default_llm_model(self, name: str) -> None:
+        """set default llm model"""
+        success = await self.storage.set_default_llm_model(name)
+        if not success:
+            raise LLMConfigNotFoundError(f"llm model '{name}' not found", detail={"name": name})
+
     async def test_llm_connection(self, config: LLMModelConfig) -> ConnectionTestResult:
         """test llm connection with simple prompt
 
@@ -122,8 +133,9 @@ class LLMConfigManager:
 
         fallback chain:
         1. requested name
-        2. model named "default"
-        3. first model in db
+        2. model marked as default (is_default=True)
+        3. model named "default" (legacy)
+        4. first model in db
         """
         if name:
             config = await self.storage.get_embedding_model(name)
@@ -133,14 +145,18 @@ class LLMConfigManager:
                 f"embedding model '{name}' not found", detail={"requested_name": name}
             )
 
-        # try default model
-        config = await self.storage.get_embedding_model("default")
-        if config:
-            return config
-
-        # try first model
+        # try explicit default model or model named "default"
         all_models = await self.storage.list_embedding_models()
         if all_models:
+            # check for is_default=True
+            for model in all_models:
+                if model.is_default:
+                    return model
+            # fallback to name="default"
+            for model in all_models:
+                if model.name == "default":
+                    return model
+            # fallback to first model
             return all_models[0]
 
         raise LLMConfigNotFoundError(
@@ -158,6 +174,14 @@ class LLMConfigManager:
     async def delete_embedding_model(self, name: str) -> None:
         """delete embedding model config"""
         success = await self.storage.delete_embedding_model(name)
+        if not success:
+            raise LLMConfigNotFoundError(
+                f"embedding model '{name}' not found", detail={"name": name}
+            )
+
+    async def set_default_embedding_model(self, name: str) -> None:
+        """set default embedding model"""
+        success = await self.storage.set_default_embedding_model(name)
         if not success:
             raise LLMConfigNotFoundError(
                 f"embedding model '{name}' not found", detail={"name": name}

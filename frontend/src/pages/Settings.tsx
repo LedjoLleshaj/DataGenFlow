@@ -1,19 +1,13 @@
-import { useEffect, useState } from "react";
-import { Box, Heading, Text, Button, IconButton, Spinner, Tooltip } from "@primer/react";
-import {
-  PlusIcon,
-  TrashIcon,
-  PencilIcon,
-  CheckCircleIcon,
-  CircleIcon,
-  CheckCircleFillIcon,
-} from "@primer/octicons-react";
+import { useEffect, useState, useRef } from "react";
+import { Box, Heading, Text, Button, Spinner, Tooltip } from "@primer/react";
+import { PlusIcon, CircleIcon, CheckCircleFillIcon } from "@primer/octicons-react";
 import { toast } from "sonner";
 import type { LLMModelConfig, EmbeddingModelConfig } from "../types";
 import { llmConfigApi } from "../services/llmConfigApi";
 import LLMFormModal from "../components/settings/LLMFormModal";
 import EmbeddingFormModal from "../components/settings/EmbeddingFormModal";
 import { ConfirmModal } from "../components/ui/confirm-modal";
+import { ModelCard } from "../components/settings/ModelCard";
 
 export default function Settings() {
   const [llmModels, setLlmModels] = useState<LLMModelConfig[]>([]);
@@ -26,20 +20,30 @@ export default function Settings() {
   const [testingEmbedding, setTestingEmbedding] = useState<string | null>(null);
   const [deletingLlm, setDeletingLlm] = useState<string | null>(null);
   const [deletingEmbedding, setDeletingEmbedding] = useState<string | null>(null);
+  const [settingDefaultLlm, setSettingDefaultLlm] = useState<string | null>(null);
+  const [settingDefaultEmbedding, setSettingDefaultEmbedding] = useState<string | null>(null);
   const [langfuseEnabled, setLangfuseEnabled] = useState<boolean>(false);
   const [langfuseHost, setLangfuseHost] = useState<string | null>(null);
   const [loadingLangfuse, setLoadingLangfuse] = useState(true);
+
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
     loadLlmModels();
     loadEmbeddingModels();
     loadLangfuseStatus();
+
+    return () => {
+      isMountedRef.current = false;
+    };
   }, []);
 
   const loadLlmModels = async () => {
     try {
       const models = await llmConfigApi.listLLMModels();
-      setLlmModels(models);
+      if (isMountedRef.current) {
+        setLlmModels(models);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       toast.error(`Failed to load LLM models: ${message}`);
@@ -49,7 +53,9 @@ export default function Settings() {
   const loadEmbeddingModels = async () => {
     try {
       const models = await llmConfigApi.listEmbeddingModels();
-      setEmbeddingModels(models);
+      if (isMountedRef.current) {
+        setEmbeddingModels(models);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       toast.error(`Failed to load embedding models: ${message}`);
@@ -63,13 +69,17 @@ export default function Settings() {
         throw new Error(`http ${res.status}`);
       }
       const data = await res.json();
-      setLangfuseEnabled(data.enabled);
-      setLangfuseHost(data.host);
+      if (isMountedRef.current) {
+        setLangfuseEnabled(data.enabled);
+        setLangfuseHost(data.host);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       console.error("Failed to load Langfuse status:", message);
     } finally {
-      setLoadingLangfuse(false);
+      if (isMountedRef.current) {
+        setLoadingLangfuse(false);
+      }
     }
   };
 
@@ -105,10 +115,13 @@ export default function Settings() {
         toast.error(`Connection test failed: ${result.message}`);
       }
     } catch (error) {
+      console.error(error);
       const message = error instanceof Error ? error.message : "Unknown error";
       toast.error(`Connection test failed: ${message}`);
     } finally {
-      setTestingLlm(null);
+      if (isMountedRef.current) {
+        setTestingLlm(null);
+      }
     }
   };
 
@@ -122,10 +135,49 @@ export default function Settings() {
         toast.error(`Connection test failed: ${result.message}`);
       }
     } catch (error) {
+      console.error(error);
       const message = error instanceof Error ? error.message : "Unknown error";
       toast.error(`Connection test failed: ${message}`);
     } finally {
-      setTestingEmbedding(null);
+      if (isMountedRef.current) {
+        setTestingEmbedding(null);
+      }
+    }
+  };
+
+  const handleSetDefaultLlm = async (name: string) => {
+    if (settingDefaultLlm === name) return;
+    setSettingDefaultLlm(name);
+    try {
+      await llmConfigApi.setDefaultLLMModel(name);
+      toast.success("Default LLM model updated");
+      loadLlmModels();
+    } catch (error) {
+      console.error(error);
+      const message = error instanceof Error ? error.message : "Unknown error";
+      toast.error(`Failed to set default LLM model: ${message}`);
+    } finally {
+      if (isMountedRef.current) {
+        setSettingDefaultLlm(null);
+      }
+    }
+  };
+
+  const handleSetDefaultEmbedding = async (name: string) => {
+    if (settingDefaultEmbedding === name) return;
+    setSettingDefaultEmbedding(name);
+    try {
+      await llmConfigApi.setDefaultEmbeddingModel(name);
+      toast.success("Default embedding model updated");
+      loadEmbeddingModels();
+    } catch (error) {
+      console.error(error);
+      const message = error instanceof Error ? error.message : "Unknown error";
+      toast.error(`Failed to set default embedding model: ${message}`);
+    } finally {
+      if (isMountedRef.current) {
+        setSettingDefaultEmbedding(null);
+      }
     }
   };
 
@@ -209,106 +261,24 @@ export default function Settings() {
         ) : (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
             {llmModels.map((model) => (
-              <Box
+              <ModelCard
                 key={model.name}
-                sx={{
-                  p: 3,
-                  border: "1px solid",
-                  borderColor: "border.default",
-                  borderRadius: 2,
-                  bg: "canvas.subtle",
+                model={model}
+                status={{
+                  isDefault: model.is_default ?? false,
+                  isTesting: testingLlm === model.name,
+                  isSettingDefault: settingDefaultLlm === model.name,
                 }}
-              >
-                <Box sx={{ display: "flex", alignItems: "start", justifyContent: "space-between" }}>
-                  <Box sx={{ flex: 1 }}>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1 }}>
-                      <Text sx={{ fontWeight: "bold", fontSize: 2, color: "fg.default" }}>
-                        {model.name}
-                      </Text>
-                      <Box
-                        sx={{
-                          px: 2,
-                          py: 1,
-                          borderRadius: 2,
-                          bg: "accent.subtle",
-                          color: "accent.fg",
-                          fontSize: 0,
-                          fontWeight: "semibold",
-                        }}
-                      >
-                        {model.provider}
-                      </Box>
-                      {model.name === "default" && (
-                        <Box
-                          sx={{
-                            px: 2,
-                            py: 1,
-                            borderRadius: 2,
-                            bg: "success.subtle",
-                            color: "success.fg",
-                            fontSize: 0,
-                            fontWeight: "semibold",
-                          }}
-                        >
-                          default
-                        </Box>
-                      )}
-                    </Box>
-                    <Box sx={{ display: "flex", flexDirection: "column", gap: 1, mb: 1 }}>
-                      <Text sx={{ fontSize: 1, color: "fg.muted", mb: 1 }}>
-                        model: {model.model_name}
-                      </Text>
-                      <Text sx={{ fontSize: 1, color: "fg.muted", fontFamily: "mono" }}>
-                        {model.endpoint}
-                      </Text>
-                    </Box>
-                  </Box>
-
-                  <Box sx={{ display: "flex", gap: 2 }}>
-                    <Button
-                      size="small"
-                      variant="default"
-                      onClick={() => handleTestLlm(model)}
-                      disabled={testingLlm === model.name}
-                      sx={{
-                        color: testingLlm === model.name ? "fg.muted" : "success.fg",
-                        borderColor:
-                          testingLlm === model.name ? "border.default" : "success.emphasis",
-                        "&:hover:not(:disabled)": {
-                          bg: "success.subtle",
-                          borderColor: "success.emphasis",
-                          color: "success.fg",
-                        },
-                      }}
-                    >
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                        {testingLlm === model.name ? (
-                          <Spinner size="small" />
-                        ) : (
-                          <CheckCircleIcon size={16} />
-                        )}
-                        <Text>{testingLlm === model.name ? "Testing..." : "Test"}</Text>
-                      </Box>
-                    </Button>
-                    <IconButton
-                      icon={PencilIcon}
-                      aria-label="edit"
-                      size="small"
-                      onClick={() => {
-                        setEditingLlm(model);
-                        setLlmModalOpen(true);
-                      }}
-                    />
-                    <IconButton
-                      icon={TrashIcon}
-                      aria-label="delete"
-                      size="small"
-                      variant="danger"
-                      onClick={() => setDeletingLlm(model.name)}
-                    />
-                  </Box>
-                </Box>
-              </Box>
+                actions={{
+                  onSetDefault: () => handleSetDefaultLlm(model.name),
+                  onTest: () => handleTestLlm(model),
+                  onEdit: () => {
+                    setEditingLlm(model);
+                    setLlmModalOpen(true);
+                  },
+                  onDelete: () => setDeletingLlm(model.name),
+                }}
+              />
             ))}
           </Box>
         )}
@@ -352,90 +322,25 @@ export default function Settings() {
         ) : (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
             {embeddingModels.map((model) => (
-              <Box
+              <ModelCard
                 key={model.name}
-                sx={{
-                  p: 3,
-                  border: "1px solid",
-                  borderColor: "border.default",
-                  borderRadius: 2,
-                  bg: "canvas.subtle",
+                model={model}
+                status={{
+                  isDefault: model.is_default ?? false,
+                  isTesting: testingEmbedding === model.name,
+                  isSettingDefault: settingDefaultEmbedding === model.name,
                 }}
-              >
-                <Box sx={{ display: "flex", alignItems: "start", justifyContent: "space-between" }}>
-                  <Box sx={{ flex: 1, display: "flex", flexDirection: "column" }}>
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 1 }}>
-                      <Text sx={{ fontWeight: "bold", fontSize: 2, color: "fg.default" }}>
-                        {model.name}
-                      </Text>
-                      <Box
-                        sx={{
-                          px: 2,
-                          py: 1,
-                          borderRadius: 2,
-                          bg: "accent.subtle",
-                          color: "accent.fg",
-                          fontSize: 0,
-                          fontWeight: "semibold",
-                        }}
-                      >
-                        {model.provider}
-                      </Box>
-                    </Box>
-                    <Text sx={{ fontSize: 1, color: "fg.muted", mb: 1 }}>
-                      model: {model.model_name}
-                      {model.dimensions && ` (${model.dimensions}d)`}
-                    </Text>
-                    <Text sx={{ fontSize: 1, color: "fg.muted", fontFamily: "mono" }}>
-                      {model.endpoint}
-                    </Text>
-                  </Box>
-
-                  <Box sx={{ display: "flex", gap: 2 }}>
-                    <Button
-                      size="small"
-                      variant="default"
-                      onClick={() => handleTestEmbedding(model)}
-                      disabled={testingEmbedding === model.name}
-                      sx={{
-                        color: testingEmbedding === model.name ? "fg.muted" : "success.fg",
-                        borderColor:
-                          testingEmbedding === model.name ? "border.default" : "success.emphasis",
-                        "&:hover:not(:disabled)": {
-                          bg: "success.subtle",
-                          borderColor: "success.emphasis",
-                          color: "success.fg",
-                        },
-                      }}
-                    >
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                        {testingEmbedding === model.name ? (
-                          <Spinner size="small" />
-                        ) : (
-                          <CheckCircleIcon size={16} />
-                        )}
-                        <Text>{testingEmbedding === model.name ? "Testing..." : "Test"}</Text>
-                      </Box>
-                    </Button>
-                    <IconButton
-                      icon={PencilIcon}
-                      aria-label="edit"
-                      size="small"
-                      onClick={() => {
-                        setEditingEmbedding(model);
-                        setEmbeddingModalOpen(true);
-                      }}
-                    />
-                    <IconButton
-                      icon={TrashIcon}
-                      aria-label="delete"
-                      size="small"
-                      variant="danger"
-                      onClick={() => setDeletingEmbedding(model.name)}
-                    />
-                  </Box>
-                </Box>
-              </Box>
+                actions={{
+                  onSetDefault: () => handleSetDefaultEmbedding(model.name),
+                  onTest: () => handleTestEmbedding(model),
+                  onEdit: () => {
+                    setEditingEmbedding(model);
+                    setEmbeddingModalOpen(true);
+                  },
+                  onDelete: () => setDeletingEmbedding(model.name),
+                }}
+                extraDetails={model.dimensions ? ` (${model.dimensions}d)` : undefined}
+              />
             ))}
           </Box>
         )}

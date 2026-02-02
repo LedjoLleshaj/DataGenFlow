@@ -29,7 +29,7 @@ from lib.entities import (
 from lib.errors import BlockExecutionError, BlockNotFoundError, ValidationError
 from lib.job_processor import process_job_in_thread
 from lib.job_queue import JobQueue
-from lib.llm_config import LLMConfigManager, LLMConfigNotFoundError
+from lib.llm_config import LLMConfigError, LLMConfigManager, LLMConfigNotFoundError
 from lib.storage import Storage
 from lib.templates import template_registry
 from lib.workflow import Pipeline as WorkflowPipeline
@@ -698,6 +698,19 @@ async def delete_llm_model(name: str) -> dict[str, str]:
         raise HTTPException(status_code=404, detail=e.message)
 
 
+@api_router.put("/llm-models/{name}/default")
+async def set_default_llm_model(name: str) -> dict[str, str]:
+    """set default llm model"""
+    try:
+        await llm_config_manager.set_default_llm_model(name)
+        return {"message": "llm model set as default successfully"}
+    except LLMConfigNotFoundError as e:
+        raise HTTPException(status_code=404, detail=e.message)
+    except LLMConfigError as e:
+        logger.exception(f"failed to set default llm model {name}")
+        raise HTTPException(status_code=400, detail=e.message) from e
+
+
 @api_router.post("/llm-models/test")
 async def test_llm_connection(config: LLMModelConfig) -> ConnectionTestResult:
     """test llm connection"""
@@ -751,6 +764,19 @@ async def delete_embedding_model(name: str) -> dict[str, str]:
         return {"message": "embedding model deleted successfully"}
     except LLMConfigNotFoundError as e:
         raise HTTPException(status_code=404, detail=e.message)
+
+
+@api_router.put("/embedding-models/{name}/default")
+async def set_default_embedding_model(name: str) -> dict[str, str]:
+    """set default embedding model"""
+    try:
+        await llm_config_manager.set_default_embedding_model(name)
+        return {"message": "embedding model set as default successfully"}
+    except LLMConfigNotFoundError as e:
+        raise HTTPException(status_code=404, detail=e.message)
+    except LLMConfigError as e:
+        logger.exception(f"failed to set default embedding model {name}")
+        raise HTTPException(status_code=400, detail=e.message) from e
 
 
 @api_router.post("/embedding-models/test")

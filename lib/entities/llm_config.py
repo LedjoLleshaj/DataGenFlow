@@ -16,6 +16,7 @@ class LLMModelConfig(BaseModel):
     endpoint: str = ""
     api_key: str = ""
     model_name: str = Field(..., min_length=1)
+    is_default: bool = False
 
     @field_validator("endpoint", "api_key", mode="before")
     @classmethod
@@ -30,6 +31,7 @@ class EmbeddingModelConfig(BaseModel):
     endpoint: str = ""
     api_key: str = ""
     model_name: str = Field(..., min_length=1)
+    is_default: bool = False
     dimensions: int = 0
 
     @field_validator("endpoint", "api_key", mode="before")

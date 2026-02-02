@@ -30,6 +30,7 @@ frontend/src/
       StartEndNode.tsx         # circular start/end
       utils.ts                 # format conversion
     settings/
+      ModelCard.tsx            # reusable model card (status, actions objects)
       LLMFormModal.tsx         # llm config form
       EmbeddingFormModal.tsx   # embedding config form
     ui/                        # shadcn components
@@ -69,11 +70,14 @@ frontend/src/
 - view stability: tracks by ID, single mode preserves current record
 
 ### Settings.tsx
-- LLM/embedding model management
-- provider/model selection (OpenAI, Anthropic, Ollama, etc)
+- LLM/embedding model management via ModelCard components
+- provider/model selection (OpenAI, Anthropic, Ollama, etc.)
 - API key configuration
-- connection testing
-- default model selection
+- connection testing with loading states
+- explicit "Set Default" button per model (shows spinner while setting)
+- default model badge with CheckCircleFillIcon for visual distinction
+- mounted guards in async handlers to prevent state updates on unmount
+- console.error logging before toast.error for debugging
 
 ## components
 
@@ -157,7 +161,7 @@ shadcn radix-ui dialog, replaces browser confirm()
 **endpoints:**
 - GET /api/blocks, /api/templates, /api/pipelines, /api/jobs/active, /api/jobs/{id}, /api/records
 - POST /api/pipelines, /api/pipelines/from_template/{id}, /api/generate, /api/seeds/validate
-- PUT /api/records/{id}, /api/llm-models/{name}, /api/embedding-models/{name}
+- PUT /api/records/{id}, /api/llm-models/{name}, /api/embedding-models/{name}, /api/llm-models/{name}/default, /api/embedding-models/{name}/default
 - DELETE /api/pipelines/{id}, /api/jobs/{id}, /api/records
 - GET /api/export/download, /api/llm-models, /api/embedding-models
 
