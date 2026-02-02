@@ -71,7 +71,7 @@ frontend/src/
 
 ### Settings.tsx
 - LLM/embedding model management via ModelCard components
-- provider/model selection (OpenAI, Anthropic, Ollama, etc)
+- provider/model selection (OpenAI, Anthropic, Ollama, etc.)
 - API key configuration
 - connection testing with loading states
 - explicit "Set Default" button per model (shows spinner while setting)

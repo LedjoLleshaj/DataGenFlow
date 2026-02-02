@@ -41,7 +41,9 @@ export default function Settings() {
   const loadLlmModels = async () => {
     try {
       const models = await llmConfigApi.listLLMModels();
-      setLlmModels(models);
+      if (isMountedRef.current) {
+        setLlmModels(models);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       toast.error(`Failed to load LLM models: ${message}`);
@@ -51,7 +53,9 @@ export default function Settings() {
   const loadEmbeddingModels = async () => {
     try {
       const models = await llmConfigApi.listEmbeddingModels();
-      setEmbeddingModels(models);
+      if (isMountedRef.current) {
+        setEmbeddingModels(models);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       toast.error(`Failed to load embedding models: ${message}`);
@@ -65,13 +69,17 @@ export default function Settings() {
         throw new Error(`http ${res.status}`);
       }
       const data = await res.json();
-      setLangfuseEnabled(data.enabled);
-      setLangfuseHost(data.host);
+      if (isMountedRef.current) {
+        setLangfuseEnabled(data.enabled);
+        setLangfuseHost(data.host);
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       console.error("Failed to load Langfuse status:", message);
     } finally {
-      setLoadingLangfuse(false);
+      if (isMountedRef.current) {
+        setLoadingLangfuse(false);
+      }
     }
   };
 
