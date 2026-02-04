@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-02-04 🚀
+
+### Added
+- Conversational data augmentation pipeline template with e2e tests
+- DataGenFlow skills for Claude Code
+- Model selection in blocks with tests, with possibilty to define a default model
+- CodeRabbit integration for automated code review
+
+### Fixed
+- Docker configuration was stale
+
 ## [1.3.0] - 2026-01-06 🚀
 
 ### Added
@@ -67,6 +78,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - REST API for pipeline execution
 - Template system for common use cases
 
+[1.4.0]: https://github.com/nicofretti/DataGenFlow/compare/release-v1.3.0...release-v1.4.0
 [1.3.0]: https://github.com/nicofretti/DataGenFlow/compare/release-v1.2.0...release-v1.3.0
 [1.2.0]: https://github.com/nicofretti/DataGenFlow/compare/release-v1.1.0...release-v1.2.0
 [1.1.0]: https://github.com/nicofretti/DataGenFlow/compare/release...release-v1.1.0
