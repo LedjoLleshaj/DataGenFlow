@@ -28,7 +28,7 @@ install: check-deps
 	cd frontend && yarn install
 
 dev: check-deps
-	uv venv && uv sync --extra dev
+	uv venv && uv sync --group dev
 	cd frontend && yarn install
 
 dev-ui:
