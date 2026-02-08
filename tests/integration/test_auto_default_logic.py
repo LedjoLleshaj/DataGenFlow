@@ -99,3 +99,35 @@ async def test_embedding_auto_default_logic(storage: Storage):
 
     saved_model2 = await storage.get_embedding_model("emb2")
     assert saved_model2.is_default is True, "Remaining single embedding model should become default"
+
+
+@pytest.mark.asyncio
+async def test_model_update_preserves_state(storage: Storage):
+    # Clear tables
+    await storage._execute_with_connection(lambda db: db.execute("DELETE FROM llm_models"))
+
+    # 1. Create a default model
+    model = LLMModelConfig(
+        name="test-model",
+        provider=LLMProvider.OPENAI,
+        model_name="gpt-4",
+        is_default=True,
+    )
+    await storage.save_llm_model(model)
+
+    # 2. Update the model (changing provider and model_name)
+    updated_model = LLMModelConfig(
+        name="test-model",
+        provider=LLMProvider.ANTHROPIC,
+        model_name="claude-3",
+        is_default=True,  # Frontend will now send this
+        endpoint="https://api.anthropic.com",
+    )
+    await storage.save_llm_model(updated_model)
+
+    # 3. Verify all fields updated and is_default is still True
+    saved = await storage.get_llm_model("test-model")
+    assert saved.provider == LLMProvider.ANTHROPIC
+    assert saved.model_name == "claude-3"
+    assert saved.endpoint == "https://api.anthropic.com"
+    assert saved.is_default is True
