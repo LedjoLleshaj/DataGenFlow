@@ -51,13 +51,17 @@ export default function LLMFormModal({ isOpen, onClose, onSave, initialData }: P
       setEndpoint(initialData.endpoint);
       setApiKey(initialData.api_key || "");
       setModelName(initialData.model_name);
-    } else {
-      // set defaults for new model
-      const defaults = PROVIDER_DEFAULTS[provider];
+    } else if (isOpen) {
+      // set defaults for new model only when opening
+      const defaultProvider: LLMProvider = "openai";
+      const defaults = PROVIDER_DEFAULTS[defaultProvider];
+      setName("");
+      setProvider(defaultProvider);
       setEndpoint(defaults.endpoint);
       setModelName(defaults.model);
+      setApiKey("");
     }
-  }, [initialData, provider]);
+  }, [isOpen, initialData]);
 
   const handleProviderChange = (newProvider: LLMProvider) => {
     setProvider(newProvider);
@@ -97,6 +101,7 @@ export default function LLMFormModal({ isOpen, onClose, onSave, initialData }: P
       endpoint: endpoint.trim(),
       api_key: apiKey.trim() || null,
       model_name: modelName.trim(),
+      is_default: initialData?.is_default,
     };
 
     setSaving(true);

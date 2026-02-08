@@ -58,14 +58,18 @@ export default function EmbeddingFormModal({ isOpen, onClose, onSave, initialDat
       setApiKey(initialData.api_key || "");
       setModelName(initialData.model_name);
       setDimensions(initialData.dimensions?.toString() || "");
-    } else {
-      // set defaults for new model
-      const defaults = PROVIDER_DEFAULTS[provider];
+    } else if (isOpen) {
+      // set defaults for new model only when opening
+      const defaultProvider: LLMProvider = "openai";
+      const defaults = PROVIDER_DEFAULTS[defaultProvider];
+      setName("");
+      setProvider(defaultProvider);
       setEndpoint(defaults.endpoint);
       setModelName(defaults.model);
       setDimensions(defaults.dimensions?.toString() || "");
+      setApiKey("");
     }
-  }, [initialData, provider]);
+  }, [isOpen, initialData]);
 
   const handleProviderChange = (newProvider: LLMProvider) => {
     setProvider(newProvider);
@@ -110,6 +114,7 @@ export default function EmbeddingFormModal({ isOpen, onClose, onSave, initialDat
       api_key: apiKey.trim() || null,
       model_name: modelName.trim(),
       dimensions: dimensions ? parseInt(dimensions) : null,
+      is_default: initialData?.is_default,
     };
 
     setSaving(true);
