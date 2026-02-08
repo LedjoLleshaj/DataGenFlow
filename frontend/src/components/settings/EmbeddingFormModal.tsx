@@ -40,6 +40,9 @@ const PROVIDER_DEFAULTS: Record<
   },
 };
 
+const isLLMProvider = (v: string): v is LLMProvider =>
+  ["openai", "anthropic", "gemini", "ollama"].includes(v);
+
 export default function EmbeddingFormModal({ isOpen, onClose, onSave, initialData }: Props) {
   const [name, setName] = useState("");
   const [provider, setProvider] = useState<LLMProvider>("openai");
@@ -168,7 +171,10 @@ export default function EmbeddingFormModal({ isOpen, onClose, onSave, initialDat
           <FormControl.Label sx={{ color: "fg.default" }}>Provider</FormControl.Label>
           <Select
             value={provider}
-            onChange={(e) => handleProviderChange(e.target.value as LLMProvider)}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (isLLMProvider(val)) handleProviderChange(val);
+            }}
             block
           >
             {PROVIDERS.map((p) => (

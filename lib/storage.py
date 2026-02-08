@@ -268,19 +268,21 @@ class Storage:
             try:
                 result = await func(self._conn)
                 await self._conn.commit()
-                return result
             except Exception:
                 await self._conn.rollback()
                 raise
+            else:
+                return result
 
         async with aiosqlite.connect(self.db_path) as db:
             try:
                 result = await func(db)
                 await db.commit()
-                return result
             except Exception:
                 await db.rollback()
                 raise
+            else:
+                return result
 
     async def save_record(
         self, record: RecordCreate, pipeline_id: int | None = None, job_id: int | None = None
@@ -698,45 +700,38 @@ class Storage:
         """create or update llm model config (upsert)"""
 
         async def _save(db: Connection) -> None:
-            await db.execute("BEGIN")
-            try:
-                if config.is_default:
-                    await db.execute("UPDATE llm_models SET is_default = 0")
+            if config.is_default:
+                await db.execute("UPDATE llm_models SET is_default = 0")
 
+            await db.execute(
+                """
+                INSERT INTO llm_models
+                (name, provider, endpoint, api_key, model_name, is_default)
+                VALUES (?, ?, ?, ?, ?, ?)
+                ON CONFLICT(name) DO UPDATE SET
+                    provider = excluded.provider,
+                    endpoint = excluded.endpoint,
+                    api_key = excluded.api_key,
+                    model_name = excluded.model_name,
+                    is_default = excluded.is_default
+                """,
+                (
+                    config.name,
+                    config.provider.value,
+                    config.endpoint,
+                    config.api_key,
+                    config.model_name,
+                    config.is_default,
+                ),
+            )
+
+            # self-healing: ensure at least one default model exists
+            cursor = await db.execute("SELECT COUNT(*) FROM llm_models WHERE is_default = 1")
+            row = await cursor.fetchone()
+            if not row or row[0] == 0:
                 await db.execute(
-                    """
-                    INSERT INTO llm_models
-                    (name, provider, endpoint, api_key, model_name, is_default)
-                    VALUES (?, ?, ?, ?, ?, ?)
-                    ON CONFLICT(name) DO UPDATE SET
-                        provider = excluded.provider,
-                        endpoint = excluded.endpoint,
-                        api_key = excluded.api_key,
-                        model_name = excluded.model_name,
-                        is_default = excluded.is_default
-                    """,
-                    (
-                        config.name,
-                        config.provider.value,
-                        config.endpoint,
-                        config.api_key,
-                        config.model_name,
-                        config.is_default,
-                    ),
+                    "UPDATE llm_models SET is_default = 1 WHERE name = ?", (config.name,)
                 )
-
-                # self-healing: ensure at least one default model exists
-                cursor = await db.execute("SELECT COUNT(*) FROM llm_models WHERE is_default = 1")
-                row = await cursor.fetchone()
-                if not row or row[0] == 0:
-                    await db.execute(
-                        "UPDATE llm_models SET is_default = 1 WHERE name = ?", (config.name,)
-                    )
-
-                await db.execute("COMMIT")
-            except Exception:
-                await db.execute("ROLLBACK")
-                raise
 
         await self._execute_with_connection(_save)
 
@@ -839,49 +834,40 @@ class Storage:
         """create or update embedding model config (upsert)"""
 
         async def _save(db: Connection) -> None:
-            await db.execute("BEGIN")
-            try:
-                if config.is_default:
-                    await db.execute("UPDATE embedding_models SET is_default = 0")
+            if config.is_default:
+                await db.execute("UPDATE embedding_models SET is_default = 0")
 
+            await db.execute(
+                """
+                INSERT INTO embedding_models
+                    (name, provider, endpoint, api_key, model_name, dimensions, is_default)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(name) DO UPDATE SET
+                    provider = excluded.provider,
+                    endpoint = excluded.endpoint,
+                    api_key = excluded.api_key,
+                    model_name = excluded.model_name,
+                    dimensions = excluded.dimensions,
+                    is_default = excluded.is_default
+                """,
+                (
+                    config.name,
+                    config.provider.value,
+                    config.endpoint,
+                    config.api_key,
+                    config.model_name,
+                    config.dimensions,
+                    config.is_default,
+                ),
+            )
+
+            # self-healing: ensure at least one default model exists
+            cursor = await db.execute("SELECT COUNT(*) FROM embedding_models WHERE is_default = 1")
+            row = await cursor.fetchone()
+            if not row or row[0] == 0:
                 await db.execute(
-                    """
-                    INSERT INTO embedding_models
-                        (name, provider, endpoint, api_key, model_name, dimensions, is_default)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
-                    ON CONFLICT(name) DO UPDATE SET
-                        provider = excluded.provider,
-                        endpoint = excluded.endpoint,
-                        api_key = excluded.api_key,
-                        model_name = excluded.model_name,
-                        dimensions = excluded.dimensions,
-                        is_default = excluded.is_default
-                    """,
-                    (
-                        config.name,
-                        config.provider.value,
-                        config.endpoint,
-                        config.api_key,
-                        config.model_name,
-                        config.dimensions,
-                        config.is_default,
-                    ),
+                    "UPDATE embedding_models SET is_default = 1 WHERE name = ?", (config.name,)
                 )
-
-                # self-healing: ensure at least one default model exists
-                cursor = await db.execute(
-                    "SELECT COUNT(*) FROM embedding_models WHERE is_default = 1"
-                )
-                row = await cursor.fetchone()
-                if not row or row[0] == 0:
-                    await db.execute(
-                        "UPDATE embedding_models SET is_default = 1 WHERE name = ?", (config.name,)
-                    )
-
-                await db.execute("COMMIT")
-            except Exception:
-                await db.execute("ROLLBACK")
-                raise
 
         await self._execute_with_connection(_save)
 

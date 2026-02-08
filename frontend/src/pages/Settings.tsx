@@ -213,7 +213,7 @@ export default function Settings() {
       loadEmbeddingModels();
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
-      toast.error(`Failed to save LLM model: ${message}`);
+      toast.error(`Failed to save embedding model: ${message}`);
       throw error;
     }
   };

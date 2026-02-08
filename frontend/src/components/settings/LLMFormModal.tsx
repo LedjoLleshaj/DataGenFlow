@@ -2,19 +2,8 @@ import { useState, useEffect } from "react";
 import { Box, Button, TextInput, FormControl, Select, Dialog } from "@primer/react";
 import type { LLMModelConfig, LLMProvider } from "../../types";
 
-interface Props {
-  isOpen: boolean;
-  onClose: () => void;
-  onSave: (config: LLMModelConfig) => Promise<void>;
-  initialData?: LLMModelConfig;
-}
-
-const PROVIDERS: { value: LLMProvider; label: string }[] = [
-  { value: "openai", label: "OpenAI" },
-  { value: "anthropic", label: "Anthropic" },
-  { value: "gemini", label: "Google Gemini" },
-  { value: "ollama", label: "Ollama" },
-];
+const isLLMProvider = (v: string): v is LLMProvider =>
+  ["openai", "anthropic", "gemini", "ollama"].includes(v);
 
 const PROVIDER_DEFAULTS: Record<LLMProvider, { endpoint: string; model: string }> = {
   openai: {
@@ -34,6 +23,20 @@ const PROVIDER_DEFAULTS: Record<LLMProvider, { endpoint: string; model: string }
     model: "llama3",
   },
 };
+
+interface Props {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (config: LLMModelConfig) => Promise<void>;
+  initialData?: LLMModelConfig;
+}
+
+const PROVIDERS: { value: LLMProvider; label: string }[] = [
+  { value: "openai", label: "OpenAI" },
+  { value: "anthropic", label: "Anthropic" },
+  { value: "gemini", label: "Google Gemini" },
+  { value: "ollama", label: "Ollama" },
+];
 
 export default function LLMFormModal({ isOpen, onClose, onSave, initialData }: Props) {
   const [name, setName] = useState("");
@@ -154,7 +157,10 @@ export default function LLMFormModal({ isOpen, onClose, onSave, initialData }: P
           <FormControl.Label sx={{ color: "fg.default" }}>Provider</FormControl.Label>
           <Select
             value={provider}
-            onChange={(e) => handleProviderChange(e.target.value as LLMProvider)}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (isLLMProvider(val)) handleProviderChange(val);
+            }}
             block
           >
             {PROVIDERS.map((p) => (
