@@ -29,6 +29,9 @@ export default function Settings() {
   const isMountedRef = useRef(true);
 
   useEffect(() => {
+    // Reset to true on each mount (important for React StrictMode double-mount)
+    isMountedRef.current = true;
+    
     loadLlmModels();
     loadEmbeddingModels();
     loadLangfuseStatus();
