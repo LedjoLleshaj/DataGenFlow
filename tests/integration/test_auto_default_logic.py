@@ -131,3 +131,56 @@ async def test_model_update_preserves_state(storage: Storage):
     assert saved.model_name == "claude-3"
     assert saved.endpoint == "https://api.anthropic.com"
     assert saved.is_default is True
+
+
+@pytest.mark.asyncio
+async def test_model_update_non_default_stays_non_default(storage: Storage):
+    # Clear tables
+    await storage._execute_with_connection(lambda db: db.execute("DELETE FROM llm_models"))
+
+    # 1. Create two models, first becomes default
+    model1 = LLMModelConfig(
+        name="m1", provider=LLMProvider.OPENAI, model_name="gpt-4", is_default=True
+    )
+    model2 = LLMModelConfig(
+        name="m2", provider=LLMProvider.ANTHROPIC, model_name="claude-3", is_default=False
+    )
+    await storage.save_llm_model(model1)
+    await storage.save_llm_model(model2)
+
+    # 2. Update non-default model
+    updated = LLMModelConfig(
+        name="m2", provider=LLMProvider.OLLAMA, model_name="llama3", is_default=False
+    )
+    await storage.save_llm_model(updated)
+
+    saved = await storage.get_llm_model("m2")
+    assert saved.is_default is False
+    # verify m1 is still default
+    m1 = await storage.get_llm_model("m1")
+    assert m1.is_default is True
+
+
+@pytest.mark.asyncio
+async def test_model_update_forces_default_if_only_one(storage: Storage):
+    # Clear tables
+    await storage._execute_with_connection(lambda db: db.execute("DELETE FROM llm_models"))
+
+    # 1. Create a model with is_default=False (but it will be forced to True as it's the only one)
+    model = LLMModelConfig(
+        name="only-one", provider=LLMProvider.OPENAI, model_name="gpt-4", is_default=False
+    )
+    await storage.save_llm_model(model)
+
+    saved = await storage.get_llm_model("only-one")
+    assert saved.is_default is True
+
+    # 2. Update it specifically with is_default=False
+    updated = LLMModelConfig(
+        name="only-one", provider=LLMProvider.OPENAI, model_name="gpt-4", is_default=False
+    )
+    await storage.save_llm_model(updated)
+
+    # 3. Verify it is STILL default (self-healing)
+    saved = await storage.get_llm_model("only-one")
+    assert saved.is_default is True

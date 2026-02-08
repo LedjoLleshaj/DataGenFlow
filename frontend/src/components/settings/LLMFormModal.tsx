@@ -101,7 +101,7 @@ export default function LLMFormModal({ isOpen, onClose, onSave, initialData }: P
       endpoint: endpoint.trim(),
       api_key: apiKey.trim() || null,
       model_name: modelName.trim(),
-      is_default: initialData?.is_default,
+      is_default: initialData?.is_default ?? false,
     };
 
     setSaving(true);

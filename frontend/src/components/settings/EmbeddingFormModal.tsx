@@ -114,7 +114,7 @@ export default function EmbeddingFormModal({ isOpen, onClose, onSave, initialDat
       api_key: apiKey.trim() || null,
       model_name: modelName.trim(),
       dimensions: dimensions ? parseInt(dimensions) : null,
-      is_default: initialData?.is_default,
+      is_default: initialData?.is_default ?? false,
     };
 
     setSaving(true);
