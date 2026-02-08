@@ -200,6 +200,16 @@ class Storage:
         if "is_default" not in llm_column_names:
             await db.execute("ALTER TABLE llm_models ADD COLUMN is_default BOOLEAN DEFAULT 0")
 
+        # ensure at least one llm model is default if models exist
+        await db.execute(
+            """
+            UPDATE llm_models
+            SET is_default = 1
+            WHERE name = (SELECT name FROM llm_models ORDER BY name LIMIT 1)
+            AND (SELECT COUNT(*) FROM llm_models WHERE is_default = 1) = 0
+            """
+        )
+
         # migrate embedding_models table
         cursor = await db.execute("PRAGMA table_info(embedding_models)")
         embedding_columns = await cursor.fetchall()
@@ -207,6 +217,16 @@ class Storage:
 
         if "is_default" not in embedding_column_names:
             await db.execute("ALTER TABLE embedding_models ADD COLUMN is_default BOOLEAN DEFAULT 0")
+
+        # ensure at least one embedding model is default if models exist
+        await db.execute(
+            """
+            UPDATE embedding_models
+            SET is_default = 1
+            WHERE name = (SELECT name FROM embedding_models ORDER BY name LIMIT 1)
+            AND (SELECT COUNT(*) FROM embedding_models WHERE is_default = 1) = 0
+            """
+        )
 
     async def _migrate_env_to_db(self, db: Connection) -> None:
         """migrate .env config to database if no models configured"""
