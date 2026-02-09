@@ -99,8 +99,8 @@ export default function EmbeddingFormModal({ isOpen, onClose, onSave, initialDat
     if (provider !== "ollama" && !apiKey.trim()) {
       newErrors.apiKey = "api key is required for this provider";
     }
-    if (dimensions && isNaN(parseInt(dimensions))) {
-      newErrors.dimensions = "dimensions must be a number";
+    if (dimensions && (isNaN(Number(dimensions)) || Number(dimensions) < 1)) {
+      newErrors.dimensions = "dimensions must be a number greater than 0";
     }
 
     setErrors(newErrors);

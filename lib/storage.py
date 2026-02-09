@@ -269,6 +269,7 @@ class Storage:
                 result = await func(self._conn)
                 await self._conn.commit()
             except Exception:
+                logger.exception("transaction failed during _execute_with_connection")
                 await self._conn.rollback()
                 raise
             else:
@@ -279,6 +280,7 @@ class Storage:
                 result = await func(db)
                 await db.commit()
             except Exception:
+                logger.exception("transaction failed during _execute_with_connection")
                 await db.rollback()
                 raise
             else:
@@ -759,6 +761,7 @@ class Storage:
                 await db.execute("COMMIT")
                 return deleted
             except Exception:
+                logger.exception(f"transaction failed during delete_llm_model for name={name}")
                 await db.execute("ROLLBACK")
                 raise
 
@@ -782,6 +785,7 @@ class Storage:
                 await db.execute("COMMIT")
                 return True
             except Exception:
+                logger.exception(f"transaction failed during set_default_llm_model for name={name}")
                 await db.execute("ROLLBACK")
                 raise
 
@@ -894,6 +898,9 @@ class Storage:
                 await db.execute("COMMIT")
                 return deleted
             except Exception:
+                logger.exception(
+                    f"transaction failed during delete_embedding_model for name={name}"
+                )
                 await db.execute("ROLLBACK")
                 raise
 
@@ -919,6 +926,9 @@ class Storage:
                 await db.execute("COMMIT")
                 return True
             except Exception:
+                logger.exception(
+                    f"transaction failed during set_default_embedding_model for name={name}"
+                )
                 await db.execute("ROLLBACK")
                 raise
 

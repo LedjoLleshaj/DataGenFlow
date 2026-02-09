@@ -255,3 +255,30 @@ async def test_embedding_update_non_default_stays_non_default(storage: Storage):
     e1 = await storage.get_embedding_model("e1")
     assert e1 is not None
     assert e1.is_default is True
+
+
+@pytest.mark.asyncio
+async def test_embedding_update_forces_default_if_only_one(storage: Storage):
+    # Clear tables
+    await storage._execute_with_connection(lambda db: db.execute("DELETE FROM embedding_models"))
+
+    # 1. Create a model with is_default=False (but it will be forced to True as it's the only one)
+    model = EmbeddingModelConfig(
+        name="only-embed", provider=LLMProvider.OPENAI, model_name="text-3", is_default=False
+    )
+    await storage.save_embedding_model(model)
+
+    saved = await storage.get_embedding_model("only-embed")
+    assert saved is not None
+    assert saved.is_default is True
+
+    # 2. Update it specifically with is_default=False
+    updated = EmbeddingModelConfig(
+        name="only-embed", provider=LLMProvider.OPENAI, model_name="text-3", is_default=False
+    )
+    await storage.save_embedding_model(updated)
+
+    # 3. Verify it is STILL default (self-healing)
+    saved = await storage.get_embedding_model("only-embed")
+    assert saved is not None
+    assert saved.is_default is True
