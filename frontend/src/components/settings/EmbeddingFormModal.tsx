@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Box, Button, TextInput, FormControl, Select, Dialog } from "@primer/react";
 import type { EmbeddingModelConfig, LLMProvider } from "../../types";
+import { isLLMProvider, LLM_PROVIDERS } from "../../types";
 
 interface Props {
   isOpen: boolean;
@@ -8,13 +9,6 @@ interface Props {
   onSave: (config: EmbeddingModelConfig) => Promise<void>;
   initialData?: EmbeddingModelConfig;
 }
-
-const PROVIDERS: { value: LLMProvider; label: string }[] = [
-  { value: "openai", label: "OpenAI" },
-  { value: "anthropic", label: "Anthropic" },
-  { value: "gemini", label: "Google Gemini" },
-  { value: "ollama", label: "Ollama" },
-];
 
 const PROVIDER_DEFAULTS: Record<
   LLMProvider,
@@ -39,9 +33,6 @@ const PROVIDER_DEFAULTS: Record<
     dimensions: 768,
   },
 };
-
-const isLLMProvider = (v: string): v is LLMProvider =>
-  ["openai", "anthropic", "gemini", "ollama"].includes(v);
 
 export default function EmbeddingFormModal({ isOpen, onClose, onSave, initialData }: Props) {
   const [name, setName] = useState("");
@@ -177,7 +168,7 @@ export default function EmbeddingFormModal({ isOpen, onClose, onSave, initialDat
             }}
             block
           >
-            {PROVIDERS.map((p) => (
+            {LLM_PROVIDERS.map((p) => (
               <Select.Option key={p.value} value={p.value}>
                 {p.label}
               </Select.Option>
